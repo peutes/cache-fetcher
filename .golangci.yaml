@@ -1,0 +1,12 @@
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    ignore: fmt:.*,pp:.*
+    # ignore: fmt:.*,pp:.*,io/ioutil:^Read.*
+  lll:
+    # max line length, lines longer will be reported. Default is 120.
+    # '\t' is counted as 1 character by default, and can be changed with the tab-width option
+    line-length: 160
+issues:
+  exclude-use-default: false

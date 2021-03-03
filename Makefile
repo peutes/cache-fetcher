@@ -8,9 +8,9 @@ lint: FORCE ## lint
 	golangci-lint run ./... --out-format tab -p bugs -D errcheck || true
 	golangci-lint run ./... --out-format tab -p format || true
 	golangci-lint run ./... --out-format tab -p unused || true
-	golangci-lint run ./... --out-format tab -p performance -D prealloc || true
+	golangci-lint run ./... --out-format tab -p performance -D prealloc -D maligned || true
 	golangci-lint run ./... --out-format tab -p complexity -D nestif || true
-	golangci-lint run ./... --out-format tab -p style -D godot -D funlen -D ifshort -D paralleltest -D godox -D gomnd -D exhaustivestruct -D wsl -D gochecknoglobals || true
+	golangci-lint run ./... --out-format tab -p style -D godot -D funlen -D ifshort -D paralleltest -D godox -D gomnd -D exhaustivestruct -D wsl -D gochecknoglobals -D nlreturn -D nolintlint || true
 
 test: FORCE ## test
 	go test -v ./...

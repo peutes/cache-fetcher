@@ -6,14 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-
 	"strings"
 	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/k0kubun/pp"
 	perrors "github.com/pkg/errors"
-
 	"golang.org/x/sync/singleflight"
 )
 
@@ -35,7 +33,7 @@ type (
 		Del(key string) error
 	}
 
-	RedisFetcherOption struct {
+	Options struct {
 		Group          *singleflight.Group
 		GroupTimeout   time.Duration
 		WithStackTrace bool
@@ -58,24 +56,24 @@ var defaultGroup = singleflight.Group{}
 
 const defaultGroupTimeout = 30 * time.Second
 
-func NewRedisFetcher(client Client, option *RedisFetcherOption) RedisFetcher {
+func NewRedisFetcher(client Client, options *Options) RedisFetcher {
 	// default
-	if option == nil {
-		option = &RedisFetcherOption{}
+	if options == nil {
+		options = &Options{}
 	}
-	if option.Group == nil {
-		option.Group = &defaultGroup
+	if options.Group == nil {
+		options.Group = &defaultGroup
 	}
-	if option.GroupTimeout == 0 {
-		option.GroupTimeout = defaultGroupTimeout
+	if options.GroupTimeout == 0 {
+		options.GroupTimeout = defaultGroupTimeout
 	}
 
 	return &redisFetcherImpl{
 		client:         client,
-		group:          option.Group,
-		groupTimeout:   option.GroupTimeout,
-		withStackTrace: option.WithStackTrace,
-		debugPrintMode: option.DebugPrintMode,
+		group:          options.Group,
+		groupTimeout:   options.GroupTimeout,
+		withStackTrace: options.WithStackTrace,
+		debugPrintMode: options.DebugPrintMode,
 	}
 }
 
@@ -98,6 +96,7 @@ func (f *redisFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 		}
 
 		if f.debugPrintMode {
+			// nolint
 			pp.Printf("cache: %+v is %+v\n", f.key, f.isCached)
 		}
 		return res.Val, nil
@@ -110,7 +109,7 @@ func (f *redisFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 func (f *redisFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetcher interface{}) func() (interface{}, error) {
 	return func() (interface{}, error) {
 		cRes, err := f.get(dst)()
-		if err != nil && err != redis.Nil {
+		if err != nil && !errors.Is(err, redis.Nil) {
 			return nil, err // no add error stack.
 		}
 
@@ -143,6 +142,7 @@ func (f *redisFetcherImpl) SetVal(value interface{}, expiration time.Duration) e
 	}
 
 	if f.debugPrintMode {
+		// nolint
 		pp.Printf("set: %+v\n", f.key)
 	}
 	return nil
@@ -159,6 +159,7 @@ func (f *redisFetcherImpl) GetVal(dst interface{}) (interface{}, error) {
 		}
 
 		if f.debugPrintMode {
+			// nolint
 			pp.Printf("get: %+v is %+v\n", f.key, f.isCached)
 		}
 		return res.Val, nil
@@ -174,8 +175,7 @@ func (f *redisFetcherImpl) get(dst interface{}) func() (interface{}, error) {
 			return nil, f.newError("dst requires pointer type")
 		}
 
-		err := f.client.Get(f.key, dst)
-		if err != nil {
+		if err := f.client.Get(f.key, dst); err != nil {
 			return nil, f.withStack(err)
 		}
 
@@ -207,5 +207,6 @@ func (f *redisFetcherImpl) newError(format string, args ...interface{}) error {
 	if f.withStackTrace {
 		return perrors.Errorf(format, args...)
 	}
-	return errors.New(fmt.Sprintf(format, args...))
+	// nolint:goerr113
+	return fmt.Errorf(format, args...)
 }

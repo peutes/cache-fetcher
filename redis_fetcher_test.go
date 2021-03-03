@@ -1,7 +1,9 @@
-package redisfetcher
+package redisfetcher_test
 
 import (
 	"context"
+	"errors"
+	redisfetcher "redis-fetcher"
 	"testing"
 	"time"
 
@@ -10,13 +12,15 @@ import (
 
 const host = "localhost:6379"
 
-func getClient() Client {
+var options = &redisfetcher.Options{WithStackTrace: true, DebugPrintMode: true}
+
+func getClient() redisfetcher.Client {
 	c := redis.NewUniversalClient(
 		&redis.UniversalOptions{Addrs: []string{host}},
 	)
-	return &TestSampleClientImpl{
-		client: c,
-		ctx:    context.Background(),
+	return &redisfetcher.TestSampleClientImpl{
+		Client: c,
+		Ctx:    context.Background(),
 	}
 }
 
@@ -37,17 +41,13 @@ func TestClient(t *testing.T) {
 	}
 
 	err = c.Get("key2", &val)
-	if err == redis.Nil {
-		// not found
-	} else if err != nil {
-		t.Error(err)
-	} else {
-		t.Errorf("failed: %+v", val)
+	if !errors.Is(err, redis.Nil) {
+		t.Errorf("failed: %+v, %+v", val, err)
 	}
 }
 
 func TestSetKey(t *testing.T) {
-	f := NewRedisFetcher(getClient(), &RedisFetcherOption{DebugPrintMode: true})
+	f := redisfetcher.NewRedisFetcher(getClient(), options)
 	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
 	key := f.Key()
 
@@ -58,7 +58,7 @@ func TestSetKey(t *testing.T) {
 }
 
 func TestSetKeyWithHash(t *testing.T) {
-	f := NewRedisFetcher(getClient(), &RedisFetcherOption{DebugPrintMode: true})
+	f := redisfetcher.NewRedisFetcher(getClient(), options)
 	f.SetKey([]string{"prefix", "key"}, true, "hoge", "fugadddddddd")
 	key := f.Key()
 
@@ -69,13 +69,14 @@ func TestSetKeyWithHash(t *testing.T) {
 }
 
 func TestFetch(t *testing.T) {
-	f := NewRedisFetcher(getClient(), &RedisFetcherOption{DebugPrintMode: true})
+	f := redisfetcher.NewRedisFetcher(getClient(), options)
 	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
 
 	// first fetch read from fetcher.
 	var dst string
+	want := "piyo"
 	dst2, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
-		return "piyo", nil
+		return want, nil
 	})
 	if err != nil {
 		t.Errorf("%+v", err)
@@ -85,14 +86,13 @@ func TestFetch(t *testing.T) {
 		t.Errorf("%+v %+v", f.IsCached(), dst)
 	}
 
-	want := "piyo"
 	if dst2 != want {
 		t.Errorf("%+v", dst2)
 	}
 
 	// second fetch read from cache.
 	dst3, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
-		return "piyo", nil
+		return want, nil
 	})
 	if err != nil {
 		t.Errorf("%+v", err)
@@ -105,11 +105,10 @@ func TestFetch(t *testing.T) {
 	if dst != want || dst3 != want {
 		t.Errorf("%+v, %+v", dst, dst3)
 	}
-
 }
 
 func TestSetVal(t *testing.T) {
-	f := NewRedisFetcher(getClient(), &RedisFetcherOption{DebugPrintMode: true})
+	f := redisfetcher.NewRedisFetcher(getClient(), options)
 	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
 	if err := f.SetVal("value", 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
@@ -117,9 +116,10 @@ func TestSetVal(t *testing.T) {
 }
 
 func TestGetVal(t *testing.T) {
-	f := NewRedisFetcher(getClient(), &RedisFetcherOption{DebugPrintMode: true})
+	f := redisfetcher.NewRedisFetcher(getClient(), options)
 	f.SetKey([]string{"prefix", "key"}, true, "hoge", "fuga")
-	if err := f.SetVal("value", 10*time.Second); err != nil {
+	want := "value"
+	if err := f.SetVal(want, 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
 	}
 
@@ -133,14 +133,13 @@ func TestGetVal(t *testing.T) {
 		t.Errorf("%+v", f.IsCached())
 	}
 
-	want := "value"
 	if dst != want || dst2 != want {
 		t.Errorf("%+v, %+v", dst, dst2)
 	}
 }
 
 func TestDelVal(t *testing.T) {
-	f := NewRedisFetcher(getClient(), &RedisFetcherOption{DebugPrintMode: true})
+	f := redisfetcher.NewRedisFetcher(getClient(), options)
 	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
 	if err := f.SetVal("value", 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
@@ -152,7 +151,7 @@ func TestDelVal(t *testing.T) {
 
 	var dst string
 	dst2, err := f.GetVal(&dst)
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		t.Errorf("%+v", err)
 	}
 	if dst != "" || dst2 != nil {
