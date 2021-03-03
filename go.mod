@@ -1,4 +1,4 @@
-module redis-fetcher
+module github.com/peutes/redis-fetcher
 
 go 1.15
 
