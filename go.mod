@@ -1,4 +1,4 @@
-module github.com/peutes/redisfetcher
+module github.com/peutes/redis-fetcher
 
 go 1.15
 

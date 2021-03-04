@@ -17,12 +17,12 @@ func (i *TestSampleClientImpl) Set(key string, value interface{}, expiration tim
 	return i.Client.Set(i.Ctx, key, value, expiration).Err()
 }
 
-func (i *TestSampleClientImpl) GetSimple(key string) (string, error) {
+func (i *TestSampleClientImpl) GetString(key string) (string, error) {
 	return i.Client.Get(i.Ctx, key).Result()
 }
 
 func (i *TestSampleClientImpl) Get(key string, dst interface{}) error {
-	v, err := i.GetSimple(key)
+	v, err := i.GetString(key)
 	reflect.ValueOf(dst).Elem().SetString(v)
 	return err
 }
