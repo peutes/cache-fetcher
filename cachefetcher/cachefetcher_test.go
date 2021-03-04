@@ -85,11 +85,11 @@ func TestFetch(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
-	if f.IsCached() || dst != "" {
-		t.Errorf("%+v %+v", f.IsCached(), dst)
+	if f.IsCached() {
+		t.Errorf("%+v", f.IsCached())
 	}
 
-	if dst2 != want {
+	if dst != want || dst2 != want {
 		t.Errorf("%+v", dst2)
 	}
 

@@ -98,6 +98,8 @@ func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 			// nolint
 			pp.Printf("cache: %+v is %+v\n", f.key, f.isCached)
 		}
+
+		reflect.ValueOf(dst).Elem().Set(reflect.ValueOf(res.Val))
 		return res.Val, nil
 
 	case <-time.After(f.groupTimeout):
