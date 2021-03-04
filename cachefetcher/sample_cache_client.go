@@ -23,7 +23,7 @@ func (i *SampleCacheClientImpl) GetString(key string) (string, error) {
 }
 
 func (i *SampleCacheClientImpl) Get(key string, dst interface{}) error {
-	v, err := i.GetString(key)
+	v, err := i.Client.Get(i.Ctx, key).Result()
 	reflect.ValueOf(dst).Elem().SetString(v)
 	return err
 }
