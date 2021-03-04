@@ -17,9 +17,10 @@ import (
 
 type (
 	RedisFetcher interface {
-		SetKey(prefixes []string, usedUUID bool, elements ...string)
+		SetKey(prefixes []string, usedHash bool, elements ...string)
 		Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error)
 		SetVal(value interface{}, expiration time.Duration) error
+		GetString() (string, error)
 		GetVal(dst interface{}) (interface{}, error)
 		DelVal() error
 		Key() string
@@ -28,7 +29,7 @@ type (
 
 	Client interface {
 		Set(key string, value interface{}, expiration time.Duration) error
-		// GetSimple(key string) (string, error)
+		GetString(key string) (string, error)
 		Get(key string, dst interface{}) error
 		Del(key string) error
 	}
@@ -77,9 +78,9 @@ func NewRedisFetcher(client Client, options *Options) RedisFetcher {
 	}
 }
 
-func (f *redisFetcherImpl) SetKey(prefixes []string, usedUUID bool, elements ...string) {
+func (f *redisFetcherImpl) SetKey(prefixes []string, usedHash bool, elements ...string) {
 	e := elements
-	if usedUUID {
+	if usedHash {
 		s := sha256.Sum256([]byte(strings.Join(elements, "_")))
 		e = []string{hex.EncodeToString(s[:])}
 	}
@@ -148,7 +149,38 @@ func (f *redisFetcherImpl) SetVal(value interface{}, expiration time.Duration) e
 	return nil
 }
 
-// adapt single flight
+func (f *redisFetcherImpl) GetString() (string, error) {
+	ch := f.group.DoChan(f.key, f.getString())
+
+	select {
+	case res := <-ch:
+		if res.Err != nil {
+			return "", res.Err
+		}
+
+		if f.debugPrintMode {
+			// nolint
+			pp.Printf("get: %+v is %+v\n", f.key, f.isCached)
+		}
+		return res.Val.(string), nil
+
+	case <-time.After(f.groupTimeout):
+		return "", f.newError("get timeout: %+v", f.groupTimeout)
+	}
+}
+
+func (f *redisFetcherImpl) getString() func() (interface{}, error) {
+	return func() (interface{}, error) {
+		v, err := f.client.GetString(f.key)
+		if err != nil {
+			return nil, f.withStack(err)
+		}
+
+		f.isCached = true
+		return v, nil
+	}
+}
+
 func (f *redisFetcherImpl) GetVal(dst interface{}) (interface{}, error) {
 	ch := f.group.DoChan(f.key, f.get(dst))
 

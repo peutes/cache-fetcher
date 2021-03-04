@@ -3,11 +3,11 @@ package redisfetcher_test
 import (
 	"context"
 	"errors"
-	redisfetcher "redis-fetcher"
 	"testing"
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/peutes/redis-fetcher/src/redisfetcher"
 )
 
 const host = "localhost:6379"
@@ -112,6 +112,28 @@ func TestSetVal(t *testing.T) {
 	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
 	if err := f.SetVal("value", 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
+	}
+}
+
+func TestGetString(t *testing.T) {
+	f := redisfetcher.NewRedisFetcher(getClient(), options)
+	f.SetKey([]string{"prefix", "key"}, true, "hoge", "fuga")
+	want := "value"
+	if err := f.SetVal(want, 10*time.Second); err != nil {
+		t.Errorf("%+v", err)
+	}
+
+	dst, err := f.GetString()
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
+
+	if !f.IsCached() {
+		t.Errorf("%+v", f.IsCached())
+	}
+
+	if dst != want {
+		t.Errorf("%+v", dst)
 	}
 }
 
