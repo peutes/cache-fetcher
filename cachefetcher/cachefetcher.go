@@ -27,7 +27,6 @@ type (
 
 	Client interface {
 		Set(key string, value interface{}, expiration time.Duration) error
-		GetString(key string) (string, error)
 		Get(key string, dst interface{}) error
 		Del(key string) error
 		IsFoundKey(err error) bool
@@ -170,13 +169,14 @@ func (f *cacheFetcherImpl) GetString() (string, error) {
 
 func (f *cacheFetcherImpl) getString() func() (interface{}, error) {
 	return func() (interface{}, error) {
-		v, err := f.client.GetString(f.key)
+		var dst string
+		err := f.client.Get(f.key, &dst)
 		if err != nil {
 			return nil, f.withStack(err)
 		}
 
 		f.isCached = true
-		return v, nil
+		return dst, nil
 	}
 }
 

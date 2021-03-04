@@ -18,10 +18,6 @@ func (i *SampleCacheClientImpl) Set(key string, value interface{}, expiration ti
 	return i.Client.Set(i.Ctx, key, value, expiration).Err()
 }
 
-func (i *SampleCacheClientImpl) GetString(key string) (string, error) {
-	return i.Client.Get(i.Ctx, key).Result()
-}
-
 func (i *SampleCacheClientImpl) Get(key string, dst interface{}) error {
 	v, err := i.Client.Get(i.Ctx, key).Result()
 	reflect.ValueOf(dst).Elem().SetString(v)
