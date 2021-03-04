@@ -30,7 +30,7 @@ type (
 		GetString(key string) (string, error)
 		Get(key string, dst interface{}) error
 		Del(key string) error
-		IsNotFoundKey(err error) bool
+		IsFoundKey(err error) bool
 	}
 
 	Options struct {
@@ -109,7 +109,7 @@ func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetcher interface{}) func() (interface{}, error) {
 	return func() (interface{}, error) {
 		cRes, err := f.get(dst)()
-		if err != nil && !f.client.IsNotFoundKey(err) {
+		if err != nil && f.client.IsFoundKey(err) {
 			return nil, err // no add error stack.
 		}
 

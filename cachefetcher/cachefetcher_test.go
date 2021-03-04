@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/peutes/redis-fetcher/cachefetcher"
+	"github.com/peutes/cache-fetcher/cachefetcher"
 )
 
 const host = "localhost:6379"
@@ -27,7 +27,9 @@ func getClient() cachefetcher.Client {
 func TestClient(t *testing.T) {
 	c := getClient()
 
-	if err := c.Set("key", "value", 0); err != nil {
+	// nolint: goconst
+	want := "value"
+	if err := c.Set("key", want, 0); err != nil {
 		t.Error(err)
 	}
 
@@ -36,12 +38,13 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if val != "value" {
+	if val != want {
 		t.Errorf("failed: %+v", val)
 	}
 
 	err = c.Get("key2", &val)
-	if !errors.Is(err, redis.Nil) {
+
+	if c.IsFoundKey(err) {
 		t.Errorf("failed: %+v, %+v", val, err)
 	}
 }
