@@ -110,10 +110,10 @@ func TestFetch(t *testing.T) {
 	}
 }
 
-func TestSetVal(t *testing.T) {
+func TestSet(t *testing.T) {
 	f := cachefetcher.NewCacheFetcher(getClient(), options)
 	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
-	if err := f.SetVal("value", 10*time.Second); err != nil {
+	if err := f.Set("value", 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
 	}
 }
@@ -122,7 +122,7 @@ func TestGetString(t *testing.T) {
 	f := cachefetcher.NewCacheFetcher(getClient(), options)
 	f.SetKey([]string{"prefix", "key"}, true, "hoge", "fuga")
 	want := "value"
-	if err := f.SetVal(want, 10*time.Second); err != nil {
+	if err := f.Set(want, 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
 	}
 
@@ -140,16 +140,16 @@ func TestGetString(t *testing.T) {
 	}
 }
 
-func TestGetVal(t *testing.T) {
+func TestGet(t *testing.T) {
 	f := cachefetcher.NewCacheFetcher(getClient(), options)
 	f.SetKey([]string{"prefix", "key"}, true, "hoge", "fuga")
 	want := "value"
-	if err := f.SetVal(want, 10*time.Second); err != nil {
+	if err := f.Set(want, 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
 	}
 
 	var dst string
-	dst2, err := f.GetVal(&dst)
+	dst2, err := f.Get(&dst)
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -163,19 +163,19 @@ func TestGetVal(t *testing.T) {
 	}
 }
 
-func TestDelVal(t *testing.T) {
+func TestDel(t *testing.T) {
 	f := cachefetcher.NewCacheFetcher(getClient(), options)
 	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
-	if err := f.SetVal("value", 10*time.Second); err != nil {
+	if err := f.Set("value", 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
 	}
 
-	if err := f.DelVal(); err != nil {
+	if err := f.Del(); err != nil {
 		t.Errorf("%+v", err)
 	}
 
 	var dst string
-	dst2, err := f.GetVal(&dst)
+	dst2, err := f.Get(&dst)
 	if err != nil && !errors.Is(err, redis.Nil) {
 		t.Errorf("%+v", err)
 	}

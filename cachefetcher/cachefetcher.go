@@ -17,10 +17,10 @@ type (
 	CacheFetcher interface {
 		SetKey(prefixes []string, useHash bool, elements ...string)
 		Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error)
-		SetVal(value interface{}, expiration time.Duration) error
+		Set(value interface{}, expiration time.Duration) error
 		GetString() (string, error)
-		GetVal(dst interface{}) (interface{}, error)
-		DelVal() error
+		Get(dst interface{}) (interface{}, error)
+		Del() error
 		Key() string
 		IsCached() bool
 	}
@@ -126,7 +126,7 @@ func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetc
 		if reflect.TypeOf(fRes).Kind() == reflect.Ptr {
 			fRes = reflect.ValueOf(fRes).Elem().Interface()
 		}
-		if err := f.SetVal(fRes, expiration); err != nil {
+		if err := f.Set(fRes, expiration); err != nil {
 			return nil, err // no add error stack.
 		}
 
@@ -134,7 +134,7 @@ func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetc
 	}
 }
 
-func (f *cacheFetcherImpl) SetVal(value interface{}, expiration time.Duration) error {
+func (f *cacheFetcherImpl) Set(value interface{}, expiration time.Duration) error {
 	err := f.withStack(f.client.Set(f.key, value, expiration))
 	if err != nil {
 		return err
@@ -180,7 +180,7 @@ func (f *cacheFetcherImpl) getString() func() (interface{}, error) {
 	}
 }
 
-func (f *cacheFetcherImpl) GetVal(dst interface{}) (interface{}, error) {
+func (f *cacheFetcherImpl) Get(dst interface{}) (interface{}, error) {
 	ch := f.group.DoChan(f.key, f.get(dst))
 
 	select {
@@ -215,7 +215,7 @@ func (f *cacheFetcherImpl) get(dst interface{}) func() (interface{}, error) {
 	}
 }
 
-func (f *cacheFetcherImpl) DelVal() error {
+func (f *cacheFetcherImpl) Del() error {
 	return f.withStack(f.client.Del(f.key))
 }
 
