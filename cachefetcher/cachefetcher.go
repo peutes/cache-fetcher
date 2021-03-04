@@ -1,22 +1,20 @@
-package redisfetcher
+package cachefetcher
 
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/k0kubun/pp"
 	perrors "github.com/pkg/errors"
 	"golang.org/x/sync/singleflight"
 )
 
 type (
-	RedisFetcher interface {
+	CacheFetcher interface {
 		SetKey(prefixes []string, usedHash bool, elements ...string)
 		Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error)
 		SetVal(value interface{}, expiration time.Duration) error
@@ -32,6 +30,7 @@ type (
 		GetString(key string) (string, error)
 		Get(key string, dst interface{}) error
 		Del(key string) error
+		IsNotFoundKey(err error) bool
 	}
 
 	Options struct {
@@ -41,7 +40,7 @@ type (
 		DebugPrintMode bool
 	}
 
-	redisFetcherImpl struct {
+	cacheFetcherImpl struct {
 		client         Client
 		group          *singleflight.Group
 		groupTimeout   time.Duration
@@ -49,7 +48,7 @@ type (
 		debugPrintMode bool
 
 		key      string
-		isCached bool // is used redis cache?
+		isCached bool // is used cache?
 	}
 )
 
@@ -57,7 +56,7 @@ var defaultGroup = singleflight.Group{}
 
 const defaultGroupTimeout = 30 * time.Second
 
-func NewRedisFetcher(client Client, options *Options) RedisFetcher {
+func NewCacheFetcher(client Client, options *Options) CacheFetcher {
 	// default
 	if options == nil {
 		options = &Options{}
@@ -69,7 +68,7 @@ func NewRedisFetcher(client Client, options *Options) RedisFetcher {
 		options.GroupTimeout = defaultGroupTimeout
 	}
 
-	return &redisFetcherImpl{
+	return &cacheFetcherImpl{
 		client:         client,
 		group:          options.Group,
 		groupTimeout:   options.GroupTimeout,
@@ -78,7 +77,7 @@ func NewRedisFetcher(client Client, options *Options) RedisFetcher {
 	}
 }
 
-func (f *redisFetcherImpl) SetKey(prefixes []string, usedHash bool, elements ...string) {
+func (f *cacheFetcherImpl) SetKey(prefixes []string, usedHash bool, elements ...string) {
 	e := elements
 	if usedHash {
 		s := sha256.Sum256([]byte(strings.Join(elements, "_")))
@@ -87,7 +86,7 @@ func (f *redisFetcherImpl) SetKey(prefixes []string, usedHash bool, elements ...
 	f.key = strings.Join(append(prefixes, e...), "_")
 }
 
-func (f *redisFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error) {
+func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error) {
 	ch := f.group.DoChan(f.key, f.fetch(expiration, dst, fetcher))
 
 	select {
@@ -107,10 +106,10 @@ func (f *redisFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 	}
 }
 
-func (f *redisFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetcher interface{}) func() (interface{}, error) {
+func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetcher interface{}) func() (interface{}, error) {
 	return func() (interface{}, error) {
 		cRes, err := f.get(dst)()
-		if err != nil && !errors.Is(err, redis.Nil) {
+		if err != nil && !f.client.IsNotFoundKey(err) {
 			return nil, err // no add error stack.
 		}
 
@@ -136,7 +135,7 @@ func (f *redisFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetc
 	}
 }
 
-func (f *redisFetcherImpl) SetVal(value interface{}, expiration time.Duration) error {
+func (f *cacheFetcherImpl) SetVal(value interface{}, expiration time.Duration) error {
 	err := f.withStack(f.client.Set(f.key, value, expiration))
 	if err != nil {
 		return err
@@ -149,7 +148,7 @@ func (f *redisFetcherImpl) SetVal(value interface{}, expiration time.Duration) e
 	return nil
 }
 
-func (f *redisFetcherImpl) GetString() (string, error) {
+func (f *cacheFetcherImpl) GetString() (string, error) {
 	ch := f.group.DoChan(f.key, f.getString())
 
 	select {
@@ -169,7 +168,7 @@ func (f *redisFetcherImpl) GetString() (string, error) {
 	}
 }
 
-func (f *redisFetcherImpl) getString() func() (interface{}, error) {
+func (f *cacheFetcherImpl) getString() func() (interface{}, error) {
 	return func() (interface{}, error) {
 		v, err := f.client.GetString(f.key)
 		if err != nil {
@@ -181,7 +180,7 @@ func (f *redisFetcherImpl) getString() func() (interface{}, error) {
 	}
 }
 
-func (f *redisFetcherImpl) GetVal(dst interface{}) (interface{}, error) {
+func (f *cacheFetcherImpl) GetVal(dst interface{}) (interface{}, error) {
 	ch := f.group.DoChan(f.key, f.get(dst))
 
 	select {
@@ -201,7 +200,7 @@ func (f *redisFetcherImpl) GetVal(dst interface{}) (interface{}, error) {
 	}
 }
 
-func (f *redisFetcherImpl) get(dst interface{}) func() (interface{}, error) {
+func (f *cacheFetcherImpl) get(dst interface{}) func() (interface{}, error) {
 	return func() (interface{}, error) {
 		if reflect.TypeOf(dst).Kind() != reflect.Ptr {
 			return nil, f.newError("dst requires pointer type")
@@ -216,26 +215,26 @@ func (f *redisFetcherImpl) get(dst interface{}) func() (interface{}, error) {
 	}
 }
 
-func (f *redisFetcherImpl) DelVal() error {
+func (f *cacheFetcherImpl) DelVal() error {
 	return f.withStack(f.client.Del(f.key))
 }
 
-func (f *redisFetcherImpl) Key() string {
+func (f *cacheFetcherImpl) Key() string {
 	return f.key
 }
 
-func (f *redisFetcherImpl) IsCached() bool {
+func (f *cacheFetcherImpl) IsCached() bool {
 	return f.isCached
 }
 
-func (f *redisFetcherImpl) withStack(err error) error {
+func (f *cacheFetcherImpl) withStack(err error) error {
 	if f.withStackTrace {
 		return perrors.WithStack(err)
 	}
 	return err
 }
 
-func (f *redisFetcherImpl) newError(format string, args ...interface{}) error {
+func (f *cacheFetcherImpl) newError(format string, args ...interface{}) error {
 	if f.withStackTrace {
 		return perrors.Errorf(format, args...)
 	}
