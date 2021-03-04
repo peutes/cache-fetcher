@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/peutes/redis-fetcher/src/redisfetcher"
+	"github.com/peutes/redis-fetcher/redisfetcher"
 )
 
 const host = "localhost:6379"
@@ -18,7 +18,7 @@ func getClient() redisfetcher.Client {
 	c := redis.NewUniversalClient(
 		&redis.UniversalOptions{Addrs: []string{host}},
 	)
-	return &redisfetcher.TestSampleClientImpl{
+	return &redisfetcher.SimpleClientImpl{
 		Client: c,
 		Ctx:    context.Background(),
 	}

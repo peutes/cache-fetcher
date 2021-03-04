@@ -1,4 +1,4 @@
-package redisfetcher
+package main
 
 import (
 	// ignore: lint golint
