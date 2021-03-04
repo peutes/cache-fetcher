@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/peutes/cache-fetcher/cachefetcher"
+	"github.com/peutes/go-cache-fetcher/cachefetcher"
 )
 
 const host = "localhost:6379"
