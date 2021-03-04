@@ -1,3 +1,3 @@
-# redis-fetcher
+# cache-fetcher
 
-fetcher for golang with redis.
+fetcher for golang with cache, eg redis.
