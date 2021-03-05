@@ -1,6 +1,10 @@
 # go-cache-fetcher
 
-fetcher for golang with cache, eg redis.
+This is the function cache fetcher for golang.
+
+For example,
+The first time, You can set the data to Redis while getting the response of the function.
+The second time, If cached, You can get from Redis.
 
 
 ## Function
@@ -80,6 +84,7 @@ func (i *SampleCacheClientImpl) IsErrCacheMiss(err error) bool {
 
 ## Options
 This fetcher can use single flight with setting option.
+If `DebugPrintMode` set true, the cache key will be printed to the terminal.
 
 ```
 cachefetcher.Options{
