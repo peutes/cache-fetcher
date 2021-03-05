@@ -10,22 +10,24 @@ import (
 )
 
 type SampleCacheClientImpl struct {
-	Client redis.UniversalClient
-	Ctx    context.Context
+	Rdb *redis.Client
+	Ctx context.Context
 }
 
 func (i *SampleCacheClientImpl) Set(key string, value interface{}, expiration time.Duration) error {
-	return i.Client.Set(i.Ctx, key, value, expiration).Err()
+	// You can serialize or encode json, Base64 and so on.
+	return i.Rdb.Set(i.Ctx, key, value, expiration).Err()
 }
 
 func (i *SampleCacheClientImpl) Get(key string, dst interface{}) error {
-	v, err := i.Client.Get(i.Ctx, key).Result()
+	// You can deserialize or decode json, Base64 and so on.
+	v, err := i.Rdb.Get(i.Ctx, key).Result()
 	reflect.ValueOf(dst).Elem().SetString(v)
 	return err
 }
 
 func (i *SampleCacheClientImpl) Del(key string) error {
-	return i.Client.Del(i.Ctx, key).Err()
+	return i.Rdb.Del(i.Ctx, key).Err()
 }
 
 // return a decision when cache miss err.

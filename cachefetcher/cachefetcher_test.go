@@ -20,20 +20,15 @@ var (
 
 // nolint: staticcheck
 func TestMain(m *testing.M) {
-	c := redis.NewUniversalClient(
-		&redis.UniversalOptions{Addrs: []string{host}},
-	)
-	c.FlushDB(ctx)
-
 	client = &cachefetcher.SampleCacheClientImpl{
-		Client: c,
-		Ctx:    ctx,
+		Rdb: redis.NewClient(&redis.Options{Addr: host}),
+		Ctx: ctx,
 	}
 	m.Run()
 }
 
 func before() {
-	client.Client.FlushDB(ctx)
+	client.Rdb.FlushDB(ctx)
 }
 
 func TestClient(t *testing.T) {
