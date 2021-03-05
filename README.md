@@ -12,7 +12,7 @@ The second time, If cached, You can get from Redis.
 ## Function
 
 - Main
-	- SetKey(prefixes []string, useHash bool, elements ...string)
+	- ```go SetKey(prefixes []string, useHash bool, elements ...string)```
 	- Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error)
 
 - Other
