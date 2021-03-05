@@ -3,7 +3,9 @@
 This is the function cache fetcher for golang.
 
 For example,
+
 The first time, You can set the data to Redis while getting the response of the function.
+
 The second time, If cached, You can get from Redis.
 
 
@@ -36,20 +38,22 @@ client := &cachefetcher.SampleCacheClientImpl{
   
 fetcher := cachefetcher.NewCacheFetcher(client, options)
 fetcher.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
+
 // cache key is "prefix_key_hoge_fuga"
 
 // First fetch from function.
+
 var dst string  
 _, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
 	return "first", nil
 })
-// dst == "first"
+// dst == "first" <- get from function
 
 // Second fetch from cache eg. Redis. Not call function.
 _, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
 	return "second", nil
 })
-// dst == "first"
+// dst == "first" <- get from cache
 
 ```
 
