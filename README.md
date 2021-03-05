@@ -6,7 +6,7 @@ For example, The first time, You can set the data to Redis while getting the res
 The second time, If cached, You can get from Redis.
 
 
-## Function
+## Cache Control Functioon
 
 ### Simple cache control
 
