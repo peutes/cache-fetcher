@@ -16,7 +16,8 @@ import (
 
 type (
 	CacheFetcher interface {
-		SetKey(prefixes []string, useHash bool, elements ...string)
+		SetKey(prefixes []string, elements ...string)
+		SetHashKey(prefixes []string, elements ...string)
 		Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error)
 		Set(value interface{}, expiration time.Duration) error
 		GetString() (string, error)
@@ -81,12 +82,13 @@ func NewCacheFetcher(client Client, options *Options) CacheFetcher {
 	}
 }
 
-func (f *cacheFetcherImpl) SetKey(prefixes []string, useHash bool, elements ...string) {
-	e := elements
-	if useHash {
-		s := sha256.Sum256([]byte(strings.Join(elements, "_")))
-		e = []string{hex.EncodeToString(s[:])}
-	}
+func (f *cacheFetcherImpl) SetKey(prefixes []string, elements ...string) {
+	f.key = strings.Join(append(prefixes, elements...), "_")
+}
+
+func (f *cacheFetcherImpl) SetHashKey(prefixes []string, elements ...string) {
+	s := sha256.Sum256([]byte(strings.Join(elements, "_")))
+	e := []string{hex.EncodeToString(s[:])}
 	f.key = strings.Join(append(prefixes, e...), "_")
 }
 
