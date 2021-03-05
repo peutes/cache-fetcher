@@ -132,20 +132,17 @@ func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetc
 		if reflect.TypeOf(fRes).Kind() == reflect.Ptr {
 			fRes = reflect.ValueOf(fRes).Elem().Interface()
 		}
-		if err := f.Set(fRes, expiration); err != nil {
+		if err := f.set(fRes, expiration); err != nil {
 			return nil, err
 		}
 
-		f.isCached = false
 		return fRes, nil
 	}
 }
 
 func (f *cacheFetcherImpl) Set(value interface{}, expiration time.Duration) error {
 	f.isCached = false
-
-	err := f.client.Set(f.key, value, expiration)
-	if err != nil {
+	if err := f.set(value, expiration); err != nil {
 		return err
 	}
 	f.isCached = true
@@ -154,6 +151,10 @@ func (f *cacheFetcherImpl) Set(value interface{}, expiration time.Duration) erro
 		return err
 	}
 	return nil
+}
+
+func (f *cacheFetcherImpl) set(value interface{}, expiration time.Duration) error {
+	return f.client.Set(f.key, value, expiration)
 }
 
 func (f *cacheFetcherImpl) GetString() (string, error) {
