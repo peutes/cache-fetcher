@@ -10,7 +10,7 @@ lint: FORCE ## lint
 	golangci-lint run ./... --out-format tab -p unused || true
 	golangci-lint run ./... --out-format tab -p performance -D prealloc -D maligned || true
 	golangci-lint run ./... --out-format tab -p complexity -D nestif || true
-	golangci-lint run ./... --out-format tab -p style -D godot -D funlen -D ifshort -D paralleltest -D godox -D gomnd -D exhaustivestruct -D wsl -D gochecknoglobals -D nlreturn -D nolintlint || true
+	golangci-lint run ./... --out-format tab -p style -D godot -D funlen -D ifshort -D paralleltest -D godox -D gomnd -D exhaustivestruct -D wsl -D gochecknoglobals -D nolintlint -D goprintffuncname -D nlreturn -D wrapcheck || true
 
 test: FORCE ## test
 	go test -v ./...

@@ -12,7 +12,7 @@ import (
 
 const host = "localhost:6379"
 
-var options = &cachefetcher.Options{WithStackTrace: true, DebugPrintMode: true}
+var options = &cachefetcher.Options{DebugPrintMode: true}
 
 func getClient() cachefetcher.Client {
 	c := redis.NewUniversalClient(
