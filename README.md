@@ -3,24 +3,24 @@
 This is the function cache fetcher for golang.
 
 For example,
-
 The first time, You can set the data to Redis while getting the response of the function.
-
 The second time, If cached, You can get from Redis.
 
 
 ## Function
 
+### Set key and fetch with fetcher function.
+
 The fetcher only needs to use the `SetKey` and `Fetch` functions.
+`Fetch` is setted the fetcher function, destination value pointer and cache expiration.
+If you need a hash key, set `useHash`of `SetKey` to true.
 
 - `SetKey(prefixes []string, useHash bool, elements ...string)`
 - `Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error)`
 
-
+### 
 You can `Set()`, `Get()`, `Del()` individually.
-
 If you want key, can use `Key()`.
-
 If you want result that is cached, can use `IsCached()`.
 
 - `Set(value interface{}, expiration time.Duration) error`
