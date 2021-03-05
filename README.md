@@ -26,7 +26,7 @@ The second time, If cached, You can get from Redis.
 
 ## Sample
 
-```
+```go
 client := &cachefetcher.SampleCacheClientImpl{
 	Client: redis.NewUniversalClient(
 		&redis.UniversalOptions{Addrs: []string{"localhost:6379"}},
@@ -59,7 +59,7 @@ This cache fetcher needs cache client implement.
 
 The client needs `Set` `Get` `Del` `IsErrCacheMiss` functions.
 
-```
+```go
 var ctx = context.Background()
 type SampleCacheClientImpl struct {
 	Client redis.UniversalClient
@@ -89,7 +89,7 @@ func (i *SampleCacheClientImpl) IsErrCacheMiss(err error) bool {
 This fetcher can use single flight with setting option.
 If `DebugPrintMode` set true, the cache key will be printed to the terminal.
 
-```
+```go
 cachefetcher.Options{
 	Group:          &singleflight.Group{}, // default
 	GroupTimeout:   30 * time.Second,      // default
