@@ -3,6 +3,20 @@
 fetcher for golang with cache, eg redis.
 
 
+## Function
+
+- Main
+	- SetKey(prefixes []string, useHash bool, elements ...string)
+	- Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error)
+
+- Other
+	- Set(value interface{}, expiration time.Duration) error
+	- GetString() (string, error)
+	- Get(dst interface{}) (interface{}, error)
+	- Del() error
+	- Key() string
+	- IsCached() bool
+
 
 ## Sample
 
