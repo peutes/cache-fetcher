@@ -6,6 +6,12 @@ For example, The first time, You can set the data to Redis while getting the res
 The second time, If cached, You can get from Redis.
 
 
+## Installation
+
+```
+go get github.com/peutes/go-cache-fetcher@v1.1.3
+```
+
 ## You can fetch various functions with cache.
 
 You can fetch various functions with cache eg. Redis, Memcached, other cache system, and so on.
@@ -34,7 +40,7 @@ You can `Set()`, `Get()`, `Del()` individually. If you want key, can use `Key()`
 - `IsCached()`
 
 
-## How to use
+## Usage
 
 ### how to use cachefetcher
 
