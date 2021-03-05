@@ -62,7 +62,7 @@ _, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
 
 ```
 
-If the client supports serialization when `Set` and `Get`, Fetcher response is anything interface.
+If the client supports serialization when `Set` and `Get`, Fetcher response is anything interface.  
 For example, you can set serialize or encode json, Base64 and so on.
 
 ```
