@@ -64,7 +64,7 @@ func TestSetKey(t *testing.T) {
 	before()
 
 	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
+	f.SetKey([]string{"prefix", "key"}, "hoge", "fuga")
 	key := f.Key()
 
 	want := "prefix_key_hoge_fuga"
@@ -77,7 +77,7 @@ func TestSetKeyWithHash(t *testing.T) {
 	before()
 
 	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetKey([]string{"prefix", "key"}, true, "hoge", "fugadddddddd")
+	f.SetHashKey([]string{"prefix", "key"}, "hoge", "fugadddddddd")
 	key := f.Key()
 
 	want := "prefix_key_a31d03600d04dd35fc74f8489c9347d154074699ddb37ca893f3a0a9e20ac09d"
@@ -90,7 +90,7 @@ func TestFetch(t *testing.T) {
 	before()
 
 	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
+	f.SetKey([]string{"prefix", "key"}, "hoge", "fuga")
 
 	// first fetch read from fetcher.
 	var dst string
@@ -131,7 +131,7 @@ func TestSet(t *testing.T) {
 	before()
 
 	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
+	f.SetKey([]string{"prefix", "key"}, "hoge", "fuga")
 	if err := f.Set("value", 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -145,7 +145,7 @@ func TestGetString(t *testing.T) {
 	before()
 
 	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetKey([]string{"prefix", "key"}, true, "hoge", "fuga")
+	f.SetHashKey([]string{"prefix", "key"}, "hoge", "fuga")
 	want := "value"
 	if err := f.Set(want, 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
@@ -169,7 +169,7 @@ func TestGet(t *testing.T) {
 	before()
 
 	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetKey([]string{"prefix", "key"}, true, "hoge", "fuga")
+	f.SetHashKey([]string{"prefix", "key"}, "hoge", "fuga")
 	want := "value"
 	if err := f.Set(want, 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
@@ -194,7 +194,7 @@ func TestDel(t *testing.T) {
 	before()
 
 	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
+	f.SetKey([]string{"prefix", "key"}, "hoge", "fuga")
 	if err := f.Set("value", 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
 	}
