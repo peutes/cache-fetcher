@@ -7,30 +7,31 @@ fetcher for golang with cache, eg redis.
 ## Sample
 
 ```
-	redisClient := redis.NewUniversalClient(
-		&redis.UniversalOptions{Addrs: []string{"localhost:6379"}},
-	)
-	client := &cachefetcher.SampleCacheClientImpl{
-		Client: redisClient,
-		Ctx:    context.Background(),
-	}
+redisClient := redis.NewUniversalClient(
+	&redis.UniversalOptions{Addrs: []string{"localhost:6379"}},
+)
+
+client := &cachefetcher.SampleCacheClientImpl{
+	Client: redisClient,
+	Ctx:    context.Background(),
+}
   
-  fetcher := cachefetcher.NewCacheFetcher(client, options)
-  fetcher.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
-  // cache key is "prefix_key_hoge_fuga"
+fetcher := cachefetcher.NewCacheFetcher(client, options)
+fetcher.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
+// cache key is "prefix_key_hoge_fuga"
 
-  // First fetch from function.
-  var dst string  
-  _, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
-		return "first", nil
-	})
-  // dst == "first"
+// First fetch from function.
+var dst string  
+_, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
+	return "first", nil
+})
+// dst == "first"
 
-  // Second fetch from cache eg. Redis. Not call function.
-  _, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
-		return "second", nil
-	})
-  // dst == "first"
+// Second fetch from cache eg. Redis. Not call function.
+_, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
+	return "second", nil
+})
+// dst == "first"
 
 ```
 
@@ -68,10 +69,8 @@ This fetcher can use single flight with setting option.
 
 ```
 cachefetcher.Options{
-			Group:          &singleflight.Group{}, // default
-			GroupTimeout:   30 * time.Second,      // default
-			DebugPrintMode: true,                  // default is false
-		})
-```
-  
+	Group:          &singleflight.Group{}, // default
+	GroupTimeout:   30 * time.Second,      // default
+	DebugPrintMode: true,                  // default is false
+})
 ```
