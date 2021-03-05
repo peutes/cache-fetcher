@@ -27,13 +27,10 @@ The second time, If cached, You can get from Redis.
 ## Sample
 
 ```
-redisClient := redis.NewUniversalClient(
-	&redis.UniversalOptions{Addrs: []string{"localhost:6379"}},
-)
-
 client := &cachefetcher.SampleCacheClientImpl{
-	Client: redisClient,
-	Ctx:    context.Background(),
+	Client: redis.NewUniversalClient(
+		&redis.UniversalOptions{Addrs: []string{"localhost:6379"}},
+	),
 }
   
 fetcher := cachefetcher.NewCacheFetcher(client, options)
@@ -60,24 +57,26 @@ _, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
 ## Needs cache client
 This cache fetcher needs cache client implement.
 
+The client needs `Set` `Get` `Del` `IsErrCacheMiss` functions.
+
 ```
+var ctx = context.Background()
 type SampleCacheClientImpl struct {
 	Client redis.UniversalClient
-	Ctx    context.Context
 }
 
 func (i *SampleCacheClientImpl) Set(key string, value interface{}, expiration time.Duration) error {
-	return i.Client.Set(i.Ctx, key, value, expiration).Err()
+	return i.Client.Set(ctx, key, value, expiration).Err()
 }
 
 func (i *SampleCacheClientImpl) Get(key string, dst interface{}) error {
-	v, err := i.Client.Get(i.Ctx, key).Result()
+	v, err := i.Client.Get(ctx, key).Result()
 	reflect.ValueOf(dst).Elem().SetString(v)
 	return err
 }
 
 func (i *SampleCacheClientImpl) Del(key string) error {
-	return i.Client.Del(i.Ctx, key).Err()
+	return i.Client.Del(ctx, key).Err()
 }
 
 // return a decision when cache miss err.
