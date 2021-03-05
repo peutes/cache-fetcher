@@ -14,14 +14,16 @@ Simple cache control is that set key and fetch with fetcher function.
 
 The fetcher only needs to use the `SetKey` and `Fetch` functions.  
 `Fetch` is setted the fetcher function, destination value pointer and cache expiration.  
-If you need a hash key, set `useHash`of `SetKey` to true.
 
-- `SetKey(prefixes []string, useHash bool, elements ...string)`
+- `SetKey(prefixes []string, elements ...string)`
 - `Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error)`
 
 ### Another cache control
+If you need a hash key, can use `SetHashKey` instead of `SetKey`.
+
 You can `Set()`, `Get()`, `Del()` individually. If you want key, can use `Key()`. If you want result that is cached, can use `IsCached()`.
 
+- `SetHashKey(prefixes []string, elements ...string)`
 - `Set(value interface{}, expiration time.Duration) error`
 - `GetString() (string, error)`
 - `Get(dst interface{}) (interface{}, error)`
