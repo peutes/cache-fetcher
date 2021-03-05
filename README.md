@@ -41,9 +41,9 @@ client := &cachefetcher.SampleCacheClientImpl{
 }
   
 fetcher := cachefetcher.NewCacheFetcher(client, options)
-fetcher.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
+fetcher.SetKey([]string{"prefix", "str"}, false, "hoge")
 
-// cache key is "prefix_key_hoge_fuga"
+// cache key is "prefix_str_hoge"
 
 // First fetch from function.
 
@@ -61,6 +61,22 @@ _, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
 
 ```
 
+If the client supports serialization when `Set` and `Get`, Fetcher response is anything interface.
+For example, you can set serialize or encode json, Base64 and so on.
+
+```
+fetcher.SetKey([]string{"prefix", "int"}, false, "1")
+
+var dst string  
+_, err := f.Fetch(10*time.Second, &dst, func() ([]int, error) {
+	return []int{1,2,3,4,5}, nil
+})
+// dst == "first" <- get from function
+
+```
+
+
+
 ## Needs cache client
 
 This cache fetcher needs cache client implement.  
@@ -73,10 +89,12 @@ type SampleCacheClientImpl struct {
 }
 
 func (i *SampleCacheClientImpl) Set(key string, value interface{}, expiration time.Duration) error {
+	// You can serialize or encode json, Base64 and so on.
 	return i.Client.Set(ctx, key, value, expiration).Err()
 }
 
 func (i *SampleCacheClientImpl) Get(key string, dst interface{}) error {
+	// You can deserialize or decode json, Base64 and so on.
 	v, err := i.Client.Get(ctx, key).Result()
 	reflect.ValueOf(dst).Elem().SetString(v)
 	return err
