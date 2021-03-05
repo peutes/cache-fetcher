@@ -12,29 +12,41 @@ import (
 
 const host = "localhost:6379"
 
-var options = &cachefetcher.Options{DebugPrintMode: true}
+var (
+	options = &cachefetcher.Options{DebugPrintMode: true}
+	client  *cachefetcher.SampleCacheClientImpl
+	ctx     = context.Background()
+)
 
-func getClient() cachefetcher.Client {
+// nolint: staticcheck
+func TestMain(m *testing.M) {
 	c := redis.NewUniversalClient(
 		&redis.UniversalOptions{Addrs: []string{host}},
 	)
-	return &cachefetcher.SampleCacheClientImpl{
+	c.FlushDB(ctx)
+
+	client = &cachefetcher.SampleCacheClientImpl{
 		Client: c,
-		Ctx:    context.Background(),
+		Ctx:    ctx,
 	}
+	m.Run()
+}
+
+func before() {
+	client.Client.FlushDB(ctx)
 }
 
 func TestClient(t *testing.T) {
-	c := getClient()
+	before()
 
 	// nolint: goconst
 	want := "value"
-	if err := c.Set("key", want, 0); err != nil {
+	if err := client.Set("key", want, 0); err != nil {
 		t.Error(err)
 	}
 
 	var val string
-	err := c.Get("key", &val)
+	err := client.Get("key", &val)
 	if err != nil {
 		t.Error(err)
 	}
@@ -42,14 +54,16 @@ func TestClient(t *testing.T) {
 		t.Errorf("failed: %+v", val)
 	}
 
-	err = c.Get("key2", &val)
-	if err != nil && !c.IsErrCacheMiss(err) {
+	err = client.Get("key2", &val)
+	if err != nil && !client.IsErrCacheMiss(err) {
 		t.Errorf("failed: %+v, %+v", val, err)
 	}
 }
 
 func TestSetKey(t *testing.T) {
-	f := cachefetcher.NewCacheFetcher(getClient(), options)
+	before()
+
+	f := cachefetcher.NewCacheFetcher(client, options)
 	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
 	key := f.Key()
 
@@ -60,7 +74,9 @@ func TestSetKey(t *testing.T) {
 }
 
 func TestSetKeyWithHash(t *testing.T) {
-	f := cachefetcher.NewCacheFetcher(getClient(), options)
+	before()
+
+	f := cachefetcher.NewCacheFetcher(client, options)
 	f.SetKey([]string{"prefix", "key"}, true, "hoge", "fugadddddddd")
 	key := f.Key()
 
@@ -71,7 +87,9 @@ func TestSetKeyWithHash(t *testing.T) {
 }
 
 func TestFetch(t *testing.T) {
-	f := cachefetcher.NewCacheFetcher(getClient(), options)
+	before()
+
+	f := cachefetcher.NewCacheFetcher(client, options)
 	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
 
 	// first fetch read from fetcher.
@@ -110,15 +128,23 @@ func TestFetch(t *testing.T) {
 }
 
 func TestSet(t *testing.T) {
-	f := cachefetcher.NewCacheFetcher(getClient(), options)
+	before()
+
+	f := cachefetcher.NewCacheFetcher(client, options)
 	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
 	if err := f.Set("value", 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
 	}
+
+	if !f.IsCached() {
+		t.Errorf("%+v", f.IsCached())
+	}
 }
 
 func TestGetString(t *testing.T) {
-	f := cachefetcher.NewCacheFetcher(getClient(), options)
+	before()
+
+	f := cachefetcher.NewCacheFetcher(client, options)
 	f.SetKey([]string{"prefix", "key"}, true, "hoge", "fuga")
 	want := "value"
 	if err := f.Set(want, 10*time.Second); err != nil {
@@ -140,7 +166,9 @@ func TestGetString(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	f := cachefetcher.NewCacheFetcher(getClient(), options)
+	before()
+
+	f := cachefetcher.NewCacheFetcher(client, options)
 	f.SetKey([]string{"prefix", "key"}, true, "hoge", "fuga")
 	want := "value"
 	if err := f.Set(want, 10*time.Second); err != nil {
@@ -163,7 +191,9 @@ func TestGet(t *testing.T) {
 }
 
 func TestDel(t *testing.T) {
-	f := cachefetcher.NewCacheFetcher(getClient(), options)
+	before()
+
+	f := cachefetcher.NewCacheFetcher(client, options)
 	f.SetKey([]string{"prefix", "key"}, false, "hoge", "fuga")
 	if err := f.Set("value", 10*time.Second); err != nil {
 		t.Errorf("%+v", err)
@@ -171,6 +201,9 @@ func TestDel(t *testing.T) {
 
 	if err := f.Del(); err != nil {
 		t.Errorf("%+v", err)
+	}
+	if !f.IsCached() {
+		t.Errorf("%+v", f.IsCached())
 	}
 
 	var dst string
