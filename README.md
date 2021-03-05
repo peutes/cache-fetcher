@@ -2,7 +2,7 @@
 
 This is the function cache fetcher for golang.
 
-For example, The first time, You can set the data to Redis while getting the response of the function.  
+For example, The first time, You can set the data to Redis while getting the response of the function.
 The second time, If cached, You can get from Redis.
 
 
@@ -12,7 +12,7 @@ The second time, If cached, You can get from Redis.
 
 Simple cache control is that set key and fetch with fetcher function.
 
-The fetcher only needs to use the `SetKey` and `Fetch` functions.  
+The fetcher only needs to use the `SetKey` and `Fetch` functions.
 `Fetch` is setted the fetcher function, destination value pointer and cache expiration.  
 
 - `SetKey(prefixes []string, elements ...string)`
@@ -64,7 +64,7 @@ _, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
 
 ```
 
-If the client supports serialization when `Set` and `Get`, Fetcher response is anything interface.  
+If the client supports serialization when `Set` and `Get`, Fetcher response is anything interface.
 For example, you can set serialize or encode json, Base64 and so on.
 
 ```
@@ -81,8 +81,7 @@ _, err := f.Fetch(10*time.Second, &dst, func() ([]int, error) {
 
 ### implement cache client
 
-This cache fetcher needs cache client implement.  
-The client needs `Set` `Get` `Del` `IsErrCacheMiss` functions.
+This cache fetcher needs cache client implement. The client needs `Set` `Get` `Del` `IsErrCacheMiss` functions.
 
 ```go
 var ctx = context.Background()
@@ -113,7 +112,9 @@ func (i *SampleCacheClientImpl) IsErrCacheMiss(err error) bool {
 ```
 
 ### Options
-This fetcher can use single flight with setting option.  
+
+This fetcher can use single flight with setting option.
+
 If `DebugPrintMode` set true, the cache key will be printed to the terminal.
 
 ```go
