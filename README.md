@@ -11,17 +11,24 @@ The second time, If cached, You can get from Redis.
 
 ## Function
 
-- Main
-	- ```go SetKey(prefixes []string, useHash bool, elements ...string)```
-	- Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error)
+The fetcher only needs to use the `SetKey` and `Fetch` functions.
 
-- Other
-	- Set(value interface{}, expiration time.Duration) error
-	- GetString() (string, error)
-	- Get(dst interface{}) (interface{}, error)
-	- Del() error
-	- Key() string
-	- IsCached() bool
+- `SetKey(prefixes []string, useHash bool, elements ...string)`
+- `Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error)`
+
+
+You can `Set()`, `Get()`, `Del()` individually.
+
+If you want key, can use `Key()`.
+
+If you want result that is cached, can use `IsCached()`.
+
+- `Set(value interface{}, expiration time.Duration) error`
+- `GetString() (string, error)`
+- `Get(dst interface{}) (interface{}, error)`
+- `Del() error`
+- `Key() string`
+- `IsCached() bool`
 
 
 ## Sample
