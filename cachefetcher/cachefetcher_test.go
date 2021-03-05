@@ -43,8 +43,7 @@ func TestClient(t *testing.T) {
 	}
 
 	err = c.Get("key2", &val)
-
-	if c.IsFoundKey(err) {
+	if err != nil && !c.IsErrCacheMiss(err) {
 		t.Errorf("failed: %+v, %+v", val, err)
 	}
 }
