@@ -28,7 +28,7 @@ func (i *SampleCacheClientImpl) Del(key string) error {
 	return i.Client.Del(i.Ctx, key).Err()
 }
 
-// return a decision when key exists.
-func (i *SampleCacheClientImpl) IsFoundKey(err error) bool {
-	return err == nil || !errors.Is(err, redis.Nil)
+// return a decision when cache miss err.
+func (i *SampleCacheClientImpl) IsErrCacheMiss(err error) bool {
+	return errors.Is(err, redis.Nil)
 }

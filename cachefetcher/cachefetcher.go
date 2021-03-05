@@ -29,7 +29,7 @@ type (
 		Set(key string, value interface{}, expiration time.Duration) error
 		Get(key string, dst interface{}) error
 		Del(key string) error
-		IsFoundKey(err error) bool
+		IsErrCacheMiss(err error) bool
 	}
 
 	Options struct {
@@ -111,8 +111,8 @@ func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetcher interface{}) func() (interface{}, error) {
 	return func() (interface{}, error) {
 		cRes, err := f.get(dst)()
-		if err != nil && f.client.IsFoundKey(err) {
-			return nil, err // no add error stack.
+		if f.isErrOtherThanCacheMiss(err) {
+			return nil, err
 		}
 
 		if f.isCached {
@@ -122,7 +122,7 @@ func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetc
 		// fetch function
 		v := reflect.ValueOf(fetcher).Call(nil)
 		if !v[1].IsNil() {
-			return nil, v[1].Interface().(error) // no add error stack.
+			return nil, v[1].Interface().(error)
 		}
 
 		fRes := v[0].Interface()
@@ -130,7 +130,7 @@ func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetc
 			fRes = reflect.ValueOf(fRes).Elem().Interface()
 		}
 		if err := f.Set(fRes, expiration); err != nil {
-			return nil, err // no add error stack.
+			return nil, err
 		}
 
 		return fRes, nil
@@ -228,4 +228,8 @@ func (f *cacheFetcherImpl) Key() string {
 
 func (f *cacheFetcherImpl) IsCached() bool {
 	return f.isCached
+}
+
+func (f *cacheFetcherImpl) isErrOtherThanCacheMiss(err error) bool {
+	return err != nil && !f.client.IsErrCacheMiss(err)
 }
