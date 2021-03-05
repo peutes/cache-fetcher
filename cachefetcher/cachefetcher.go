@@ -3,13 +3,13 @@ package cachefetcher
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/k0kubun/pp"
-	perrors "github.com/pkg/errors"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -35,7 +35,6 @@ type (
 	Options struct {
 		Group          *singleflight.Group
 		GroupTimeout   time.Duration
-		WithStackTrace bool
 		DebugPrintMode bool
 	}
 
@@ -43,7 +42,6 @@ type (
 		client         Client
 		group          *singleflight.Group
 		groupTimeout   time.Duration
-		withStackTrace bool
 		debugPrintMode bool
 
 		key      string
@@ -51,7 +49,11 @@ type (
 	}
 )
 
-var defaultGroup = singleflight.Group{}
+var (
+	defaultGroup     = singleflight.Group{}
+	errTimeout       = errors.New("timeout")
+	errNoPointerType = errors.New("no pointer type")
+)
 
 const defaultGroupTimeout = 30 * time.Second
 
@@ -71,7 +73,6 @@ func NewCacheFetcher(client Client, options *Options) CacheFetcher {
 		client:         client,
 		group:          options.Group,
 		groupTimeout:   options.GroupTimeout,
-		withStackTrace: options.WithStackTrace,
 		debugPrintMode: options.DebugPrintMode,
 	}
 }
@@ -103,7 +104,7 @@ func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 		return res.Val, nil
 
 	case <-time.After(f.groupTimeout):
-		return nil, f.newError("fetch timeout: %+v", f.groupTimeout)
+		return nil, errTimeout
 	}
 }
 
@@ -137,7 +138,7 @@ func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetc
 }
 
 func (f *cacheFetcherImpl) Set(value interface{}, expiration time.Duration) error {
-	err := f.withStack(f.client.Set(f.key, value, expiration))
+	err := f.client.Set(f.key, value, expiration)
 	if err != nil {
 		return err
 	}
@@ -165,7 +166,7 @@ func (f *cacheFetcherImpl) GetString() (string, error) {
 		return res.Val.(string), nil
 
 	case <-time.After(f.groupTimeout):
-		return "", f.newError("get timeout: %+v", f.groupTimeout)
+		return "", errTimeout
 	}
 }
 
@@ -174,7 +175,7 @@ func (f *cacheFetcherImpl) getString() func() (interface{}, error) {
 		var dst string
 		err := f.client.Get(f.key, &dst)
 		if err != nil {
-			return nil, f.withStack(err)
+			return nil, err
 		}
 
 		f.isCached = true
@@ -198,18 +199,18 @@ func (f *cacheFetcherImpl) Get(dst interface{}) (interface{}, error) {
 		return res.Val, nil
 
 	case <-time.After(f.groupTimeout):
-		return nil, f.newError("get timeout: %+v", f.groupTimeout)
+		return nil, errTimeout
 	}
 }
 
 func (f *cacheFetcherImpl) get(dst interface{}) func() (interface{}, error) {
 	return func() (interface{}, error) {
 		if reflect.TypeOf(dst).Kind() != reflect.Ptr {
-			return nil, f.newError("dst requires pointer type")
+			return nil, fmt.Errorf("%w: dst", errNoPointerType)
 		}
 
 		if err := f.client.Get(f.key, dst); err != nil {
-			return nil, f.withStack(err)
+			return nil, err
 		}
 
 		f.isCached = true
@@ -218,7 +219,7 @@ func (f *cacheFetcherImpl) get(dst interface{}) func() (interface{}, error) {
 }
 
 func (f *cacheFetcherImpl) Del() error {
-	return f.withStack(f.client.Del(f.key))
+	return f.client.Del(f.key)
 }
 
 func (f *cacheFetcherImpl) Key() string {
@@ -227,19 +228,4 @@ func (f *cacheFetcherImpl) Key() string {
 
 func (f *cacheFetcherImpl) IsCached() bool {
 	return f.isCached
-}
-
-func (f *cacheFetcherImpl) withStack(err error) error {
-	if f.withStackTrace {
-		return perrors.WithStack(err)
-	}
-	return err
-}
-
-func (f *cacheFetcherImpl) newError(format string, args ...interface{}) error {
-	if f.withStackTrace {
-		return perrors.Errorf(format, args...)
-	}
-	// nolint:goerr113
-	return fmt.Errorf(format, args...)
 }
