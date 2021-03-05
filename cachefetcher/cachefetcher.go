@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime"
 	"strings"
 	"time"
 
@@ -55,7 +56,10 @@ var (
 	errNoPointerType = errors.New("no pointer type")
 )
 
-const defaultGroupTimeout = 30 * time.Second
+const (
+	defaultGroupTimeout = 30 * time.Second
+	skip                = 1
+)
 
 func NewCacheFetcher(client Client, options *Options) CacheFetcher {
 	// default
@@ -95,9 +99,8 @@ func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 			return nil, res.Err
 		}
 
-		if f.debugPrintMode {
-			// nolint
-			pp.Printf("cache: %+v is %+v\n", f.key, f.isCached)
+		if err := f.debugPrint(); err != nil {
+			return nil, err
 		}
 
 		reflect.ValueOf(dst).Elem().Set(reflect.ValueOf(res.Val))
@@ -133,19 +136,22 @@ func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetc
 			return nil, err
 		}
 
+		f.isCached = false
 		return fRes, nil
 	}
 }
 
 func (f *cacheFetcherImpl) Set(value interface{}, expiration time.Duration) error {
+	f.isCached = false
+
 	err := f.client.Set(f.key, value, expiration)
 	if err != nil {
 		return err
 	}
+	f.isCached = true
 
-	if f.debugPrintMode {
-		// nolint
-		pp.Printf("set: %+v\n", f.key)
+	if err := f.debugPrint(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -159,9 +165,8 @@ func (f *cacheFetcherImpl) GetString() (string, error) {
 			return "", res.Err
 		}
 
-		if f.debugPrintMode {
-			// nolint
-			pp.Printf("get: %+v is %+v\n", f.key, f.isCached)
+		if err := f.debugPrint(); err != nil {
+			return "", err
 		}
 		return res.Val.(string), nil
 
@@ -172,6 +177,8 @@ func (f *cacheFetcherImpl) GetString() (string, error) {
 
 func (f *cacheFetcherImpl) getString() func() (interface{}, error) {
 	return func() (interface{}, error) {
+		f.isCached = false
+
 		var dst string
 		err := f.client.Get(f.key, &dst)
 		if err != nil {
@@ -192,9 +199,8 @@ func (f *cacheFetcherImpl) Get(dst interface{}) (interface{}, error) {
 			return nil, res.Err
 		}
 
-		if f.debugPrintMode {
-			// nolint
-			pp.Printf("get: %+v is %+v\n", f.key, f.isCached)
+		if err := f.debugPrint(); err != nil {
+			return nil, err
 		}
 		return res.Val, nil
 
@@ -205,6 +211,8 @@ func (f *cacheFetcherImpl) Get(dst interface{}) (interface{}, error) {
 
 func (f *cacheFetcherImpl) get(dst interface{}) func() (interface{}, error) {
 	return func() (interface{}, error) {
+		f.isCached = false
+
 		if reflect.TypeOf(dst).Kind() != reflect.Ptr {
 			return nil, fmt.Errorf("%w: dst", errNoPointerType)
 		}
@@ -219,7 +227,19 @@ func (f *cacheFetcherImpl) get(dst interface{}) func() (interface{}, error) {
 }
 
 func (f *cacheFetcherImpl) Del() error {
-	return f.client.Del(f.key)
+	err := f.client.Del(f.key)
+	f.isCached = true
+	if f.client.IsErrCacheMiss(err) {
+		f.isCached = false
+	}
+	if err != nil {
+		return err
+	}
+
+	if err := f.debugPrint(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (f *cacheFetcherImpl) Key() string {
@@ -232,4 +252,14 @@ func (f *cacheFetcherImpl) IsCached() bool {
 
 func (f *cacheFetcherImpl) isErrOtherThanCacheMiss(err error) bool {
 	return err != nil && !f.client.IsErrCacheMiss(err)
+}
+
+func (f *cacheFetcherImpl) debugPrint() error {
+	if f.debugPrintMode {
+		pc, _, _, _ := runtime.Caller(skip)
+		names := strings.Split(runtime.FuncForPC(pc).Name(), "/")
+		_, err := pp.Printf("%+v: key: %+v, cache: %+v\n", names[len(names)-1], f.key, f.isCached)
+		return err
+	}
+	return nil
 }
