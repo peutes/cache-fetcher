@@ -6,7 +6,7 @@ This is the function cache fetcher for golang.
 ## Installation
 
 ```
-go get github.com/peutes/go-cache-fetcher@v1.1.3
+go get github.com/peutes/go-cache-fetcher
 ```
 
 ## You can fetch various functions with cache.
