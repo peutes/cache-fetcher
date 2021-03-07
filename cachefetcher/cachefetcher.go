@@ -97,25 +97,31 @@ func NewCacheFetcher(client Client, options *Options) CacheFetcher {
 
 // Set key.
 func (f *cacheFetcherImpl) SetKey(prefixes []string, elements ...interface{}) error {
-	e, err := f.toStringsForElements(elements...)
-	if err != nil {
-		return err
-	}
-
-	f.key = strings.ReplaceAll(strings.Join(append(prefixes, e), sep), " ", sep)
-	return nil
+	return f.setKey(prefixes, elements, false)
 }
 
 // Set key with hash.
 func (f *cacheFetcherImpl) SetHashKey(prefixes []string, elements ...interface{}) error {
-	e, err := f.toStringsForElements(elements...)
-	if err != nil {
-		return err
+	return f.setKey(prefixes, elements, true)
+}
+
+func (f *cacheFetcherImpl) setKey(prefixes []string, elements []interface{}, useHash bool) error {
+	s := prefixes
+	if len(elements) > 0 {
+		e, err := f.toStringsForElements(elements...)
+		if err != nil {
+			return err
+		}
+
+		h := e
+		if useHash {
+			b := sha256.Sum256([]byte(e))
+			h = hex.EncodeToString(b[:])
+		}
+		s = append(s, h)
 	}
 
-	s := sha256.Sum256([]byte(e))
-	h := []string{hex.EncodeToString(s[:])}
-	f.key = strings.ReplaceAll(strings.Join(append(prefixes, h...), sep), " ", sep)
+	f.key = strings.ReplaceAll(strings.Join(s, sep), " ", sep)
 	return nil
 }
 
