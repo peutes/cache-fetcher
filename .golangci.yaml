@@ -10,3 +10,5 @@ linters-settings:
     line-length: 160
 issues:
   exclude-use-default: false
+  exclude:
+    - Using the variable on range scope `tt` in function literal
