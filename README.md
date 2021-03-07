@@ -2,9 +2,6 @@
 
 This is the function cache fetcher for golang.
 
-For example, The first time, You can set the data to Redis while getting the response of the function.
-The second time, If cached, You can get from Redis.
-
 
 ## Installation
 
@@ -15,6 +12,10 @@ go get github.com/peutes/go-cache-fetcher@v1.1.3
 ## You can fetch various functions with cache.
 
 You can fetch various functions with cache eg. Redis, Memcached, other cache system, and so on.
+
+For example, The first time, You can set the data to Redis while getting the response of the function.
+The second time, If cached, You can get from Redis.
+
 
 ### Simple cache control
 
@@ -61,13 +62,13 @@ fetcher := func(s string) string {
 
 // The first fetch is from the fetcher. Not call cache.
 var dst string
-_, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
+err := f.Fetch(10*time.Second, &dst, func() (string, error) {
   return fetcher("first"), nil
 })
 // dst == "first fetch!!" <- get from function
 
 // The second fetch is from the expired cache. Not call fetcher.
-_, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
+err := f.Fetch(10*time.Second, &dst, func() (string, error) {
   return fetcher("second"), nil
 })
 // dst == "first fetch!!" <- get from cache
@@ -88,7 +89,8 @@ fetcher := func() ([]int, error) {
   return []int{1, 2, 3, 4, 5}
 }
 var dst []int  
-_, err := f.Fetch(10*time.Second, &dst, fetcher)
+err := f.Fetch(10*time.Second, &dst, fetcher)
+// dst == []int{1, 2, 3, 4, 5}
 
 ```
 

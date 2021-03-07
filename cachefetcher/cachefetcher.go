@@ -1,3 +1,4 @@
+// Package cachefetcher is the function cache fetcher for golang.
 package cachefetcher
 
 import (
@@ -15,14 +16,14 @@ import (
 )
 
 type (
-	// Cache Fetcher have main module functions.
+	// CacheFetcher have main module functions.
 	CacheFetcher interface {
 		SetKey(prefixes []string, elements ...interface{}) error
 		SetHashKey(prefixes []string, elements ...interface{}) error
-		Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error)
+		Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) error
 		Set(value interface{}, expiration time.Duration) error
+		Get(dst interface{}) error
 		GetString() (string, error)
-		Get(dst interface{}) (interface{}, error)
 		Del() error
 		Key() string
 		IsCached() bool
@@ -36,7 +37,7 @@ type (
 		IsErrCacheMiss(err error) bool
 	}
 
-	// Option are extended settings.
+	// Options is extended settings.
 	Options struct {
 		Group          *singleflight.Group
 		GroupTimeout   time.Duration
@@ -57,8 +58,13 @@ type (
 var (
 	defaultGroup = singleflight.Group{}
 
-	ErrInvalid       = errors.New("cachefetcher: element is invalid")
-	ErrTimeout       = errors.New("cachefetcher: timeout")
+	// ErrInvalidKeyElements is invalid for setting key.
+	ErrInvalidKeyElements = errors.New("cachefetcher: key elements is invalid")
+
+	// ErrTimeout is singleflight's chan timeout.
+	ErrTimeout = errors.New("cachefetcher: timeout")
+
+	// ErrNoPointerType is Get's dst type is no pointer.
 	ErrNoPointerType = errors.New("cachefetcher: no pointer type")
 )
 
@@ -68,7 +74,7 @@ const (
 	sep                 = "_"
 )
 
-// New cache fetcher.
+// NewCacheFetcher is new method for CacheFetcher.
 func NewCacheFetcher(client Client, options *Options) CacheFetcher {
 	// default
 	if options == nil {
@@ -115,7 +121,7 @@ func (f *cacheFetcherImpl) SetHashKey(prefixes []string, elements ...interface{}
 
 func (f *cacheFetcherImpl) toStringsForElements(elements ...interface{}) (string, error) {
 	if elements == nil {
-		return "", ErrInvalid
+		return "", ErrInvalidKeyElements
 	}
 
 	var el []string
@@ -123,7 +129,7 @@ func (f *cacheFetcherImpl) toStringsForElements(elements ...interface{}) (string
 
 	for _, e := range elements {
 		if e == nil {
-			return "", ErrInvalid
+			return "", ErrInvalidKeyElements
 		}
 
 		switch v := reflect.ValueOf(e); reflect.TypeOf(e).Kind() {
@@ -147,11 +153,11 @@ func (f *cacheFetcherImpl) toStringsForElements(elements ...interface{}) (string
 
 		case reflect.Struct:
 			if _, ok := e.(interface{ String() string }); !ok {
-				return "", ErrInvalid
+				return "", ErrInvalidKeyElements
 			}
 
 		case reflect.Map, reflect.Chan, reflect.Func, reflect.UnsafePointer, reflect.Interface, reflect.Invalid:
-			return "", ErrInvalid
+			return "", ErrInvalidKeyElements
 		}
 
 		el = append(el, fmt.Sprintf("%+v", e))
@@ -161,24 +167,24 @@ func (f *cacheFetcherImpl) toStringsForElements(elements ...interface{}) (string
 }
 
 // Fetch function or cache.
-func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error) {
+func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) error {
 	ch := f.group.DoChan(f.key, f.fetch(expiration, dst, fetcher))
 
 	select {
 	case res := <-ch:
 		if res.Err != nil {
-			return nil, res.Err
+			return res.Err
 		}
 
 		if err := f.debugPrint(); err != nil {
-			return nil, err
+			return err
 		}
 
 		reflect.ValueOf(dst).Elem().Set(reflect.ValueOf(res.Val))
-		return res.Val, nil
+		return nil
 
 	case <-time.After(f.groupTimeout):
-		return nil, ErrTimeout
+		return ErrTimeout
 	}
 }
 
@@ -229,6 +235,43 @@ func (f *cacheFetcherImpl) set(value interface{}, expiration time.Duration) erro
 	return f.client.Set(f.key, value, expiration)
 }
 
+// Get cache as any interface.
+func (f *cacheFetcherImpl) Get(dst interface{}) error {
+	ch := f.group.DoChan(f.key, f.get(dst))
+
+	select {
+	case res := <-ch:
+		if res.Err != nil {
+			return res.Err
+		}
+
+		if err := f.debugPrint(); err != nil {
+			return err
+		}
+		return nil
+
+	case <-time.After(f.groupTimeout):
+		return ErrTimeout
+	}
+}
+
+func (f *cacheFetcherImpl) get(dst interface{}) func() (interface{}, error) {
+	return func() (interface{}, error) {
+		f.isCached = false
+
+		if reflect.TypeOf(dst).Kind() != reflect.Ptr {
+			return nil, fmt.Errorf("dst: %w", ErrNoPointerType)
+		}
+
+		if err := f.client.Get(f.key, dst); err != nil {
+			return nil, err
+		}
+
+		f.isCached = true
+		return reflect.ValueOf(dst).Elem().Interface(), nil
+	}
+}
+
 // Get cache as string.
 func (f *cacheFetcherImpl) GetString() (string, error) {
 	ch := f.group.DoChan(f.key, f.getString())
@@ -261,43 +304,6 @@ func (f *cacheFetcherImpl) getString() func() (interface{}, error) {
 
 		f.isCached = true
 		return dst, nil
-	}
-}
-
-// Get cache as any interface.
-func (f *cacheFetcherImpl) Get(dst interface{}) (interface{}, error) {
-	ch := f.group.DoChan(f.key, f.get(dst))
-
-	select {
-	case res := <-ch:
-		if res.Err != nil {
-			return nil, res.Err
-		}
-
-		if err := f.debugPrint(); err != nil {
-			return nil, err
-		}
-		return res.Val, nil
-
-	case <-time.After(f.groupTimeout):
-		return nil, ErrTimeout
-	}
-}
-
-func (f *cacheFetcherImpl) get(dst interface{}) func() (interface{}, error) {
-	return func() (interface{}, error) {
-		f.isCached = false
-
-		if reflect.TypeOf(dst).Kind() != reflect.Ptr {
-			return nil, fmt.Errorf("dst: %w", ErrNoPointerType)
-		}
-
-		if err := f.client.Get(f.key, dst); err != nil {
-			return nil, err
-		}
-
-		f.isCached = true
-		return reflect.ValueOf(dst).Elem().Interface(), nil
 	}
 }
 
