@@ -111,7 +111,7 @@ func Test_SetKey(t *testing.T) {
 	}{
 		{"prefix", args{[]string{"prefix", "key"}, []interface{}{""}}, "prefix_key_", nil},
 		{"space", args{[]string{"prefix", " k e y "}, []interface{}{""}}, "prefix__k_e_y__", nil},
-
+		{"zero", args{[]string{"prefix", "key"}, nil}, "prefix_key_", nil},
 		{"string", args{[]string{"prefix", "key"}, []interface{}{"hoge", "fuga"}}, "prefix_key_hoge_fuga", nil},
 
 		{
@@ -161,7 +161,6 @@ func Test_SetKey(t *testing.T) {
 		},
 
 		// invalid
-		{"nil", args{[]string{"prefix", "key"}, nil}, "", cachefetcher.ErrInvalidKeyElements},
 		{"nil", args{[]string{"prefix", "key"}, []interface{}{nil, nil}}, "", cachefetcher.ErrInvalidKeyElements},
 		{"map", args{[]string{"prefix", "key"}, []interface{}{m}}, "", cachefetcher.ErrInvalidKeyElements},
 		{"struct2", args{[]string{"prefix", "key"}, []interface{}{ts2}}, "", cachefetcher.ErrInvalidKeyElements},
