@@ -54,7 +54,7 @@ f := cachefetcher.NewCacheFetcher(
 f.SetKey([]string{"prefix", "str"}, "hoge")
 // f.Key() == "prefix_str_hoge"
 
-// fetcher function.
+// This is fetcher function, For example, read from DB.
 fetcher := func(s string) string {
   return s + " fetch!!"
 }
@@ -74,11 +74,14 @@ _, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
 
 ```
 
+Key element support int, float, bool, complex, byte, time, slice, array, "struct with `String()` method" in addition to string.
+
 If the client supports serialization when `Set` and `Get`, Fetcher response is anything interface.
 For example, you can set serialize or encode json, Base64 and so on.
 
 ```go
-f.SetKey([]string{"prefix", "int"}, "1", "2", "3")
+f.SetKey([]string{"prefix", "any"}, 1, 0.1, true, &[]string{"a", "b"}, time.Unix(0, 0).In(time.UTC))
+_ = f.Key() // "prefix_any_1_0.1_true_a_b_1970-01-01 00:00:00 +0000 UTC"
 
 fetcher := func() ([]int, error) {
   return []int{1, 2, 3, 4, 5}
