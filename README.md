@@ -81,7 +81,8 @@ For example, you can set serialize or encode json, Base64 and so on.
 
 ```go
 f.SetKey([]string{"prefix", "any"}, 1, 0.1, true, &[]string{"a", "b"}, time.Unix(0, 0).In(time.UTC))
-_ = f.Key() // "prefix_any_1_0.1_true_a_b_1970-01-01 00:00:00 +0000 UTC"
+_ = f.Key() // "prefix_any_1_0.1_true_a_b_1970-01-01_00:00:00_+0000_UTC"
+_ = f.HashKey() // "prefix_any_c94a415eb6e20585f4fbc856b6edcf52007259522967c4bea548515e71531663"
 
 fetcher := func() ([]int, error) {
   return []int{1, 2, 3, 4, 5}
