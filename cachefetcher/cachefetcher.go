@@ -16,8 +16,8 @@ import (
 
 type (
 	CacheFetcher interface {
-		SetKey(prefixes []string, elements ...string)
-		SetHashKey(prefixes []string, elements ...string)
+		SetKey(prefixes []string, elements ...interface{}) error
+		SetHashKey(prefixes []string, elements ...interface{}) error
 		Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error)
 		Set(value interface{}, expiration time.Duration) error
 		GetString() (string, error)
@@ -52,14 +52,17 @@ type (
 )
 
 var (
-	defaultGroup     = singleflight.Group{}
-	errTimeout       = errors.New("timeout")
-	errNoPointerType = errors.New("no pointer type")
+	defaultGroup = singleflight.Group{}
+
+	ErrInvalid       = errors.New("cachefetcher: element is invalid")
+	ErrTimeout       = errors.New("cachefetcher: timeout")
+	ErrNoPointerType = errors.New("cachefetcher: no pointer type")
 )
 
 const (
 	defaultGroupTimeout = 30 * time.Second
 	skip                = 1
+	sep                 = "_"
 )
 
 func NewCacheFetcher(client Client, options *Options) CacheFetcher {
@@ -82,14 +85,72 @@ func NewCacheFetcher(client Client, options *Options) CacheFetcher {
 	}
 }
 
-func (f *cacheFetcherImpl) SetKey(prefixes []string, elements ...string) {
-	f.key = strings.Join(append(prefixes, elements...), "_")
+func (f *cacheFetcherImpl) SetKey(prefixes []string, elements ...interface{}) error {
+	e, err := f.toStringsForElements(elements...)
+	if err != nil {
+		return err
+	}
+
+	f.key = strings.ReplaceAll(strings.Join(append(prefixes, e), sep), " ", sep)
+	return nil
 }
 
-func (f *cacheFetcherImpl) SetHashKey(prefixes []string, elements ...string) {
-	s := sha256.Sum256([]byte(strings.Join(elements, "_")))
-	e := []string{hex.EncodeToString(s[:])}
-	f.key = strings.Join(append(prefixes, e...), "_")
+func (f *cacheFetcherImpl) SetHashKey(prefixes []string, elements ...interface{}) error {
+	e, err := f.toStringsForElements(elements...)
+	if err != nil {
+		return err
+	}
+
+	s := sha256.Sum256([]byte(e))
+	h := []string{hex.EncodeToString(s[:])}
+	f.key = strings.ReplaceAll(strings.Join(append(prefixes, h...), sep), " ", sep)
+	return nil
+}
+
+func (f *cacheFetcherImpl) toStringsForElements(elements ...interface{}) (string, error) {
+	if elements == nil {
+		return "", ErrInvalid
+	}
+
+	var el []string
+	var err error
+
+	for _, e := range elements {
+		if e == nil {
+			return "", ErrInvalid
+		}
+
+		switch v := reflect.ValueOf(e); reflect.TypeOf(e).Kind() {
+		case reflect.Ptr:
+			if e, err = f.toStringsForElements(v.Elem().Interface()); err != nil {
+				return "", err
+			}
+
+		case reflect.Array, reflect.Slice:
+			var il []interface{}
+			for i := 0; i < v.Len(); i++ {
+				il = append(il, v.Index(i).Interface())
+			}
+
+			if e, err = f.toStringsForElements(il...); err != nil {
+				return "", err
+			}
+
+		case reflect.Map, reflect.Chan, reflect.Func, reflect.UnsafePointer:
+			return "", ErrInvalid
+
+		case reflect.Struct:
+			if _, ok := e.(interface{ String() string }); !ok {
+				return "", ErrInvalid
+			}
+
+		default:
+		}
+
+		el = append(el, fmt.Sprintf("%+v", e))
+	}
+
+	return strings.Join(el, sep), nil
 }
 
 func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error) {
@@ -109,7 +170,7 @@ func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 		return res.Val, nil
 
 	case <-time.After(f.groupTimeout):
-		return nil, errTimeout
+		return nil, ErrTimeout
 	}
 }
 
@@ -174,7 +235,7 @@ func (f *cacheFetcherImpl) GetString() (string, error) {
 		return res.Val.(string), nil
 
 	case <-time.After(f.groupTimeout):
-		return "", errTimeout
+		return "", ErrTimeout
 	}
 }
 
@@ -208,7 +269,7 @@ func (f *cacheFetcherImpl) Get(dst interface{}) (interface{}, error) {
 		return res.Val, nil
 
 	case <-time.After(f.groupTimeout):
-		return nil, errTimeout
+		return nil, ErrTimeout
 	}
 }
 
@@ -217,7 +278,7 @@ func (f *cacheFetcherImpl) get(dst interface{}) func() (interface{}, error) {
 		f.isCached = false
 
 		if reflect.TypeOf(dst).Kind() != reflect.Ptr {
-			return nil, fmt.Errorf("%w: dst", errNoPointerType)
+			return nil, fmt.Errorf("dst: %w", ErrNoPointerType)
 		}
 
 		if err := f.client.Get(f.key, dst); err != nil {
