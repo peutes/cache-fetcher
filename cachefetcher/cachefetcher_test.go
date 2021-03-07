@@ -167,8 +167,7 @@ func Test_SetKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := cachefetcher.NewCacheFetcher(client, options)
-			err := f.SetKey(tt.args.prefixes, tt.args.elements...)
-			if !errors.Is(err, tt.err) {
+			if err := f.SetKey(tt.args.prefixes, tt.args.elements...); !errors.Is(err, tt.err) {
 				t.Errorf("%#v, %#v", tt.name, err)
 			}
 
@@ -217,8 +216,7 @@ func TestSetKeyWithHash(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := cachefetcher.NewCacheFetcher(client, options)
-			err := f.SetHashKey(tt.args.prefixes, tt.args.elements...)
-			if !errors.Is(err, tt.err) {
+			if err := f.SetHashKey(tt.args.prefixes, tt.args.elements...); !errors.Is(err, tt.err) {
 				t.Errorf("%#v, %#v", tt.name, err)
 			}
 
@@ -234,7 +232,9 @@ func TestFetch(t *testing.T) {
 	before()
 
 	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetKey([]string{"prefix", "key ptr"}, "hoge", "fuga")
+	if err := f.SetKey([]string{"prefix", "key ptr"}, "hoge", "fuga"); err != nil {
+		t.Errorf("%#v", err)
+	}
 
 	// first fetch read from fetcher.
 	var dst string
@@ -275,7 +275,10 @@ func TestSet(t *testing.T) {
 	before()
 
 	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetKey([]string{"prefix", "key"}, "hoge", "fuga")
+	if err := f.SetKey([]string{"prefix", "key"}, "hoge", "fuga"); err != nil {
+		t.Errorf("%#v", err)
+	}
+
 	if err := f.Set("value", 10*time.Second); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -289,7 +292,10 @@ func TestGetString(t *testing.T) {
 	before()
 
 	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetHashKey([]string{"prefix", "key"}, "hoge", "fuga")
+	if err := f.SetHashKey([]string{"prefix", "key"}, "hoge", "fuga"); err != nil {
+		t.Errorf("%#v", err)
+	}
+
 	want := "value"
 	if err := f.Set(want, 10*time.Second); err != nil {
 		t.Errorf("%#v", err)
@@ -313,7 +319,10 @@ func TestGet(t *testing.T) {
 	before()
 
 	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetHashKey([]string{"prefix", "key"}, "hoge", "fuga")
+	if err := f.SetHashKey([]string{"prefix", "key"}, "hoge", "fuga"); err != nil {
+		t.Errorf("%#v", err)
+	}
+
 	want := "value"
 	if err := f.Set(want, 10*time.Second); err != nil {
 		t.Errorf("%#v", err)
@@ -338,7 +347,10 @@ func TestGetWithSpaceKey(t *testing.T) {
 	before()
 
 	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetHashKey([]string{"prefix", " k e y "}, "hoge", "fuga")
+	if err := f.SetHashKey([]string{"prefix", " k e y "}, "hoge", "fuga"); err != nil {
+		t.Errorf("%#v", err)
+	}
+
 	want := "value"
 	if err := f.Set(want, 10*time.Second); err != nil {
 		t.Errorf("%#v", err)
@@ -363,7 +375,10 @@ func TestDel(t *testing.T) {
 	before()
 
 	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetKey([]string{"prefix", "key"}, "hoge", "fuga")
+	if err := f.SetKey([]string{"prefix", "key"}, "hoge", "fuga"); err != nil {
+		t.Errorf("%#v", err)
+	}
+
 	if err := f.Set("value", 10*time.Second); err != nil {
 		t.Errorf("%#v", err)
 	}

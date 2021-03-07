@@ -15,6 +15,7 @@ import (
 )
 
 type (
+	// Cache Fetcher have main module functions.
 	CacheFetcher interface {
 		SetKey(prefixes []string, elements ...interface{}) error
 		SetHashKey(prefixes []string, elements ...interface{}) error
@@ -27,6 +28,7 @@ type (
 		IsCached() bool
 	}
 
+	// Client is needs implement.
 	Client interface {
 		Set(key string, value interface{}, expiration time.Duration) error
 		Get(key string, dst interface{}) error
@@ -34,6 +36,7 @@ type (
 		IsErrCacheMiss(err error) bool
 	}
 
+	// Option are extended settings.
 	Options struct {
 		Group          *singleflight.Group
 		GroupTimeout   time.Duration
@@ -65,6 +68,7 @@ const (
 	sep                 = "_"
 )
 
+// New cache fetcher.
 func NewCacheFetcher(client Client, options *Options) CacheFetcher {
 	// default
 	if options == nil {
@@ -85,6 +89,7 @@ func NewCacheFetcher(client Client, options *Options) CacheFetcher {
 	}
 }
 
+// Set key.
 func (f *cacheFetcherImpl) SetKey(prefixes []string, elements ...interface{}) error {
 	e, err := f.toStringsForElements(elements...)
 	if err != nil {
@@ -95,6 +100,7 @@ func (f *cacheFetcherImpl) SetKey(prefixes []string, elements ...interface{}) er
 	return nil
 }
 
+// Set key with hash.
 func (f *cacheFetcherImpl) SetHashKey(prefixes []string, elements ...interface{}) error {
 	e, err := f.toStringsForElements(elements...)
 	if err != nil {
@@ -121,6 +127,9 @@ func (f *cacheFetcherImpl) toStringsForElements(elements ...interface{}) (string
 		}
 
 		switch v := reflect.ValueOf(e); reflect.TypeOf(e).Kind() {
+		case reflect.String, reflect.Bool, reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8, reflect.Uint, reflect.Uint16,
+			reflect.Uint32, reflect.Uint64, reflect.Uint8, reflect.Uintptr, reflect.Float32, reflect.Float64, reflect.Complex128, reflect.Complex64:
+
 		case reflect.Ptr:
 			if e, err = f.toStringsForElements(v.Elem().Interface()); err != nil {
 				return "", err
@@ -136,15 +145,13 @@ func (f *cacheFetcherImpl) toStringsForElements(elements ...interface{}) (string
 				return "", err
 			}
 
-		case reflect.Map, reflect.Chan, reflect.Func, reflect.UnsafePointer:
-			return "", ErrInvalid
-
 		case reflect.Struct:
 			if _, ok := e.(interface{ String() string }); !ok {
 				return "", ErrInvalid
 			}
 
-		default:
+		case reflect.Map, reflect.Chan, reflect.Func, reflect.UnsafePointer, reflect.Interface, reflect.Invalid:
+			return "", ErrInvalid
 		}
 
 		el = append(el, fmt.Sprintf("%+v", e))
@@ -153,6 +160,7 @@ func (f *cacheFetcherImpl) toStringsForElements(elements ...interface{}) (string
 	return strings.Join(el, sep), nil
 }
 
+// Fetch function or cache.
 func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) (interface{}, error) {
 	ch := f.group.DoChan(f.key, f.fetch(expiration, dst, fetcher))
 
@@ -203,6 +211,7 @@ func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetc
 	}
 }
 
+// Set cache.
 func (f *cacheFetcherImpl) Set(value interface{}, expiration time.Duration) error {
 	f.isCached = false
 	if err := f.set(value, expiration); err != nil {
@@ -220,6 +229,7 @@ func (f *cacheFetcherImpl) set(value interface{}, expiration time.Duration) erro
 	return f.client.Set(f.key, value, expiration)
 }
 
+// Get cache as string.
 func (f *cacheFetcherImpl) GetString() (string, error) {
 	ch := f.group.DoChan(f.key, f.getString())
 
@@ -254,6 +264,7 @@ func (f *cacheFetcherImpl) getString() func() (interface{}, error) {
 	}
 }
 
+// Get cache as any interface.
 func (f *cacheFetcherImpl) Get(dst interface{}) (interface{}, error) {
 	ch := f.group.DoChan(f.key, f.get(dst))
 
@@ -290,6 +301,7 @@ func (f *cacheFetcherImpl) get(dst interface{}) func() (interface{}, error) {
 	}
 }
 
+// Delete cache.
 func (f *cacheFetcherImpl) Del() error {
 	err := f.client.Del(f.key)
 	f.isCached = true
@@ -306,10 +318,12 @@ func (f *cacheFetcherImpl) Del() error {
 	return nil
 }
 
+// Get key.
 func (f *cacheFetcherImpl) Key() string {
 	return f.key
 }
 
+// Get cached.
 func (f *cacheFetcherImpl) IsCached() bool {
 	return f.isCached
 }
