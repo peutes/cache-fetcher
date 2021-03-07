@@ -183,13 +183,50 @@ func Test_SetKey(t *testing.T) {
 func TestSetKeyWithHash(t *testing.T) {
 	before()
 
-	f := cachefetcher.NewCacheFetcher(client, options)
-	f.SetHashKey([]string{"prefix", "key"}, "hoge", "fugadddddddd")
-	key := f.Key()
+	type args struct {
+		prefixes []string
+		elements []interface{}
+	}
 
-	want := "prefix_key_a31d03600d04dd35fc74f8489c9347d154074699ddb37ca893f3a0a9e20ac09d"
-	if key != want {
-		t.Errorf("%#v is not %#v", key, want)
+	tests := []struct {
+		name string
+		args args
+		want string
+		err  error
+	}{
+		{
+			"strings",
+			args{
+				[]string{"prefix", "key"},
+				[]interface{}{"hoge", "fugadddddddd"},
+			},
+			"prefix_key_a31d03600d04dd35fc74f8489c9347d154074699ddb37ca893f3a0a9e20ac09d",
+			nil,
+		},
+		{
+			"README",
+			args{
+				[]string{"prefix", "any"},
+				[]interface{}{1, 0.1, true, &[]string{"a", "b"}, time.Unix(0, 0).In(time.UTC)},
+			},
+			"prefix_any_c94a415eb6e20585f4fbc856b6edcf52007259522967c4bea548515e71531663",
+			nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := cachefetcher.NewCacheFetcher(client, options)
+			err := f.SetHashKey(tt.args.prefixes, tt.args.elements...)
+			if !errors.Is(err, tt.err) {
+				t.Errorf("%#v, %#v", tt.name, err)
+			}
+
+			key := f.Key()
+			if key != tt.want {
+				t.Errorf("%#v: %#v is not %#v", tt.name, key, tt.want)
+			}
+		})
 	}
 }
 
