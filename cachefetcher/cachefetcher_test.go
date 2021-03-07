@@ -3,6 +3,7 @@ package cachefetcher_test
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -22,7 +23,11 @@ var (
 type (
 	unique      string
 	testStruct1 struct{}
-	testStruct2 struct{}
+	testStruct2 struct {
+		A int
+		B string
+		C []bool
+	}
 )
 
 func (testStruct1) String() string {
@@ -156,12 +161,12 @@ func Test_SetKey(t *testing.T) {
 		},
 
 		// invalid
-		{"nil", args{[]string{"prefix", "key"}, nil}, "", cachefetcher.ErrInvalid},
-		{"nil", args{[]string{"prefix", "key"}, []interface{}{nil, nil}}, "", cachefetcher.ErrInvalid},
-		{"map", args{[]string{"prefix", "key"}, []interface{}{m}}, "", cachefetcher.ErrInvalid},
-		{"struct2", args{[]string{"prefix", "key"}, []interface{}{ts2}}, "", cachefetcher.ErrInvalid},
-		{"func", args{[]string{"prefix", "key"}, []interface{}{fc}}, "", cachefetcher.ErrInvalid},
-		{"chan", args{[]string{"prefix", "key"}, []interface{}{ch}}, "", cachefetcher.ErrInvalid},
+		{"nil", args{[]string{"prefix", "key"}, nil}, "", cachefetcher.ErrInvalidKeyElements},
+		{"nil", args{[]string{"prefix", "key"}, []interface{}{nil, nil}}, "", cachefetcher.ErrInvalidKeyElements},
+		{"map", args{[]string{"prefix", "key"}, []interface{}{m}}, "", cachefetcher.ErrInvalidKeyElements},
+		{"struct2", args{[]string{"prefix", "key"}, []interface{}{ts2}}, "", cachefetcher.ErrInvalidKeyElements},
+		{"func", args{[]string{"prefix", "key"}, []interface{}{fc}}, "", cachefetcher.ErrInvalidKeyElements},
+		{"chan", args{[]string{"prefix", "key"}, []interface{}{ch}}, "", cachefetcher.ErrInvalidKeyElements},
 	}
 
 	for _, tt := range tests {
@@ -239,10 +244,9 @@ func TestFetch(t *testing.T) {
 	// first fetch read from fetcher.
 	var dst string
 	want := "piyo"
-	dst2, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
+	if err := f.Fetch(10*time.Second, &dst, func() (string, error) {
 		return want, nil
-	})
-	if err != nil {
+	}); err != nil {
 		t.Errorf("%#v", err)
 	}
 
@@ -250,15 +254,14 @@ func TestFetch(t *testing.T) {
 		t.Errorf("%#v", f.IsCached())
 	}
 
-	if dst != want || dst2 != want {
-		t.Errorf("%#v, %#v is not %#v", dst, dst2, want)
+	if dst != want {
+		t.Errorf("%#v is not %#v", dst, want)
 	}
 
 	// second fetch read from cache.
-	dst3, err := f.Fetch(10*time.Second, &dst, func() (string, error) {
+	if err := f.Fetch(10*time.Second, &dst, func() (string, error) {
 		return want, nil
-	})
-	if err != nil {
+	}); err != nil {
 		t.Errorf("%#v", err)
 	}
 
@@ -266,8 +269,8 @@ func TestFetch(t *testing.T) {
 		t.Errorf("%#v", f.IsCached())
 	}
 
-	if dst != want || dst3 != want {
-		t.Errorf("%#v, %#v is not %#v", dst, dst3, want)
+	if dst != want {
+		t.Errorf("%#v is not %#v", dst, want)
 	}
 }
 
@@ -291,12 +294,12 @@ func TestSet(t *testing.T) {
 func TestGetString(t *testing.T) {
 	before()
 
+	want := "value"
 	f := cachefetcher.NewCacheFetcher(client, options)
-	if err := f.SetHashKey([]string{"prefix", "key"}, "hoge", "fuga"); err != nil {
+	if err := f.SetHashKey([]string{"prefix", "key"}, want); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	want := "value"
 	if err := f.Set(want, 10*time.Second); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -315,21 +318,22 @@ func TestGetString(t *testing.T) {
 	}
 }
 
-func TestGet(t *testing.T) {
+func TestGetInt(t *testing.T) {
 	before()
 
+	e := 100
+	var dst int
+
 	f := cachefetcher.NewCacheFetcher(client, options)
-	if err := f.SetHashKey([]string{"prefix", "key"}, "hoge", "fuga"); err != nil {
+	if err := f.SetKey([]string{"prefix", "key"}, e); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	want := "value"
-	if err := f.Set(want, 10*time.Second); err != nil {
+	if err := f.Set(e, 10*time.Second); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	var dst string
-	dst2, err := f.Get(&dst)
+	err := f.Get(&dst)
 	if err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -338,26 +342,27 @@ func TestGet(t *testing.T) {
 		t.Errorf("%#v", f.IsCached())
 	}
 
-	if dst != want || dst2 != want {
-		t.Errorf("%#v, %#v is not %#v", dst, dst2, want)
+	if dst != e {
+		t.Errorf("%#v is not %#v", dst, e)
 	}
 }
 
-func TestGetWithSpaceKey(t *testing.T) {
+func TestGetSlice(t *testing.T) {
 	before()
 
+	e := []string{"a", "b", "c"}
+	var dst []string
+
 	f := cachefetcher.NewCacheFetcher(client, options)
-	if err := f.SetHashKey([]string{"prefix", " k e y "}, "hoge", "fuga"); err != nil {
+	if err := f.SetKey([]string{"prefix", "key"}, e); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	want := "value"
-	if err := f.Set(want, 10*time.Second); err != nil {
+	if err := f.Set(e, 10*time.Second); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	var dst string
-	dst2, err := f.Get(&dst)
+	err := f.Get(&dst)
 	if err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -366,8 +371,66 @@ func TestGetWithSpaceKey(t *testing.T) {
 		t.Errorf("%#v", f.IsCached())
 	}
 
-	if dst != want || dst2 != want {
-		t.Errorf("%#v, %#v is not %#v", dst, dst2, want)
+	if !reflect.DeepEqual(dst, e) {
+		t.Errorf("%#v is not %#v", dst, e)
+	}
+}
+
+func TestGetMap(t *testing.T) {
+	before()
+
+	e := map[int]string{1: "a", 2: "b", 3: "c"}
+	var dst map[int]string
+
+	f := cachefetcher.NewCacheFetcher(client, options)
+	if err := f.SetKey([]string{"prefix", "key"}, "map"); err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	if err := f.Set(e, 10*time.Second); err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	err := f.Get(&dst)
+	if err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	if !f.IsCached() {
+		t.Errorf("%#v", f.IsCached())
+	}
+
+	if !reflect.DeepEqual(dst, e) {
+		t.Errorf("%#v is not %#v", dst, e)
+	}
+}
+
+func TestGetStruct(t *testing.T) {
+	before()
+
+	e := &testStruct2{A: 10, B: "abc", C: []bool{true, false}}
+	var dst testStruct2
+
+	f := cachefetcher.NewCacheFetcher(client, options)
+	if err := f.SetKey([]string{"prefix", "key"}, "struct"); err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	if err := f.Set(e, 10*time.Second); err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	err := f.Get(&dst)
+	if err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	if !f.IsCached() {
+		t.Errorf("%#v", f.IsCached())
+	}
+
+	if !reflect.DeepEqual(&dst, e) {
+		t.Errorf("%#v is not %#v", dst, e)
 	}
 }
 
@@ -391,11 +454,11 @@ func TestDel(t *testing.T) {
 	}
 
 	var dst string
-	dst2, err := f.Get(&dst)
+	err := f.Get(&dst)
 	if err != nil && !errors.Is(err, redis.Nil) {
 		t.Errorf("%#v", err)
 	}
-	if dst != "" || dst2 != nil {
-		t.Errorf("%#v, %#v is not %#v", dst, dst2, "")
+	if dst != "" {
+		t.Errorf("%#v is not %#v", dst, "")
 	}
 }
