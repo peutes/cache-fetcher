@@ -120,8 +120,8 @@ func (f *cacheFetcherImpl) SetHashKey(prefixes []string, elements ...interface{}
 }
 
 func (f *cacheFetcherImpl) toStringsForElements(elements ...interface{}) (string, error) {
-	if elements == nil {
-		return "", ErrInvalidKeyElements
+	if len(elements) == 0 {
+		return "", nil // no elements.
 	}
 
 	var el []string
