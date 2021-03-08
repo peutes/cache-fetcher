@@ -34,12 +34,13 @@ You can `Set()`, `Get()`, `Del()` individually. If you want key, can use `Key()`
 
 - `SetHashKey()`
 - `Set()`
-- `GetString()`
 - `Get()`
+- `SetString()`
+- `GetString()`
 - `Del()`
 - `Key()`
 - `IsCached()`
-
+- `GobRegister()
 
 ## Usage
 
