@@ -191,10 +191,8 @@ func (f *cacheFetcherImpl) toStringsForElements(elements ...interface{}) (string
 
 // Fetch function or cache.
 func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) error {
-	ch := f.group.DoChan(f.key, f.fetch(expiration, dst, fetcher))
-
 	select {
-	case res := <-ch:
+	case res := <-f.group.DoChan(f.key, f.fetch(expiration, dst, fetcher)):
 		if res.Err != nil {
 			return res.Err
 		}
@@ -289,10 +287,8 @@ func (f *cacheFetcherImpl) set(value interface{}, expiration time.Duration, isSt
 
 // Get cache as any interface.
 func (f *cacheFetcherImpl) Get(dst interface{}) error {
-	ch := f.group.DoChan(f.key, f.get(dst, false))
-
 	select {
-	case res := <-ch:
+	case res := <-f.group.DoChan(f.key, f.get(dst, false)):
 		if res.Err != nil {
 			return res.Err
 		}
@@ -310,10 +306,9 @@ func (f *cacheFetcherImpl) Get(dst interface{}) error {
 // Get cache as string.
 func (f *cacheFetcherImpl) GetString() (string, error) {
 	var dst string
-	ch := f.group.DoChan(f.key, f.get(&dst, true))
 
 	select {
-	case res := <-ch:
+	case res := <-f.group.DoChan(f.key, f.get(&dst, true)):
 		if res.Err != nil {
 			return "", res.Err
 		}
