@@ -74,6 +74,9 @@ var (
 
 	// ErrNoPointerType is Get's dst type is no pointer.
 	ErrNoPointerType = errors.New("cachefetcher: no pointer type")
+
+	// ErrGobSerialized failed to encode or decode of gob.
+	ErrGobSerialized = errors.New("cachefetcher: gob serialized failed")
 )
 
 const (
@@ -343,7 +346,7 @@ func (f *cacheFetcherImpl) get(dst interface{}, isStringMode bool) func() (inter
 		} else {
 			buf := bytes.NewBufferString(s)
 			if err := gob.NewDecoder(buf).Decode(dst); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("%w, %w", err, ErrGobDecode)
 			}
 		}
 
