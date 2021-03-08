@@ -273,7 +273,7 @@ func (f *cacheFetcherImpl) set(value interface{}, expiration time.Duration, isSt
 	if !(isStringMode || f.isNotSerialized) {
 		buf := new(bytes.Buffer)
 		if err := gob.NewEncoder(buf).Encode(value); err != nil {
-			return err
+			return fmt.Errorf("%w: %+v", ErrGobSerialized, err)
 		}
 
 		v = buf.String()
@@ -346,7 +346,7 @@ func (f *cacheFetcherImpl) get(dst interface{}, isStringMode bool) func() (inter
 		} else {
 			buf := bytes.NewBufferString(s)
 			if err := gob.NewDecoder(buf).Decode(dst); err != nil {
-				return nil, fmt.Errorf("%w, %w", err, ErrGobDecode)
+				return nil, fmt.Errorf("%w: %+v", ErrGobSerialized, err)
 			}
 		}
 

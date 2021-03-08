@@ -17,7 +17,7 @@ var (
 	options     = &cachefetcher.Options{DebugPrintMode: true}
 	redisClient *cachefetcher.SimpleRedisClientImpl
 	ctx         = context.Background()
-	timeType    = time.Unix(0, 0).In(time.UTC)
+	zerotime    = time.Unix(0, 0).In(time.UTC)
 )
 
 type (
@@ -32,6 +32,7 @@ type (
 		I64   int64
 		UI8   uint8
 		UI64  uint64
+		T     time.Time
 		IP    *int
 		SP    *string
 		BP    *bool
@@ -167,7 +168,7 @@ func Test_SetKey(t *testing.T) {
 			"struct",
 			args{
 				[]string{"prefix", "key"},
-				[]interface{}{ts1, timeType},
+				[]interface{}{ts1, zerotime},
 			},
 			"prefix_key_testStruct1_1970-01-01_00:00:00_+0000_UTC",
 			nil,
@@ -176,7 +177,7 @@ func Test_SetKey(t *testing.T) {
 			"README",
 			args{
 				[]string{"prefix", "any"},
-				[]interface{}{1, 0.1, true, &[]string{"a", "b"}, time.Unix(0, 0).In(time.UTC)},
+				[]interface{}{1, 0.1, true, &[]string{"a", "b"}, zerotime},
 			},
 			"prefix_any_1_0.1_true_a_b_1970-01-01_00:00:00_+0000_UTC",
 			nil,
@@ -445,6 +446,26 @@ func TestGetMap(t *testing.T) {
 
 	if !reflect.DeepEqual(dst, e) {
 		t.Errorf("%#v is not %#v", dst, e)
+	}
+}
+
+func TestGetFailed(t *testing.T) {
+	before()
+
+	e := "a"
+	var dst int
+
+	f := cachefetcher.NewCacheFetcher(redisClient, options)
+	if err := f.SetKey([]string{"prefix", "key"}, e); err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	if err := f.Set(e, 10*time.Second); err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	if err := f.Get(&dst); !errors.Is(err, cachefetcher.ErrGobSerialized) {
+		t.Errorf("%#v", err)
 	}
 }
 
