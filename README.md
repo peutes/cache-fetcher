@@ -40,7 +40,7 @@ You can `Set()`, `Get()`, `Del()` individually. If you want key, can use `Key()`
 - `Del()`
 - `Key()`
 - `IsCached()`
-- `GobRegister()
+- `GobRegister()`
 
 ## Usage
 
