@@ -1,6 +1,6 @@
 # go-cache-fetcher
 
-This is the function cache fetcher for golang.
+This is the function cache fetcher client for golang.
 
 
 ## Installation
@@ -21,8 +21,9 @@ The second time, If cached, You can get from Redis.
 
 Simple cache control is that set key and fetch with fetcher function.
 
-The fetcher only needs to use the `SetKey` and `Fetch` functions.
-`Fetch` is setted the fetcher function, destination value pointer and cache expiration.  
+`SetKey` and `Fetch` functions are sufficient for the fetcher client.
+
+`Fetch` needs to setted the fetcher function, destination value pointer and cache expiration. 
 
 - `SetKey()`
 - `Fetch()`
