@@ -1,6 +1,6 @@
-# go-cache-fetcher-client
+# Go Cache Fetcher Client
 
-This is the function cache fetcher client for golang.
+This is the function cache fetcher client for golang using Redis or other cache system.
 
 
 ## Installation
