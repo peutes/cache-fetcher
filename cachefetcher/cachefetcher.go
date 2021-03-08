@@ -80,7 +80,7 @@ var (
 )
 
 const (
-	defaultGroupTimeout = 30 * time.Second
+	defaultGroupTimeout = 5 * time.Minute
 	skip                = 1
 	sep                 = "_"
 )
