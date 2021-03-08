@@ -30,7 +30,7 @@ The fetcher only needs to use the `SetKey` and `Fetch` functions.
 ### Another cache control
 If you need a hash key, can use `SetHashKey` instead of `SetKey`.
 
-You can `Set()`, `Get()`, `Del()` individually. If you want key, can use `Key()`. If you want result that is cached, can use `IsCached()`.
+You can `Set()`, `Get()`, `Del()` individually. If you want key, can use `Key()`. If you want boolean result that is cached, can use `IsCached()`.
 
 - `SetHashKey()`
 - `Set()`
