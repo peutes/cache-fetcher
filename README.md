@@ -11,7 +11,7 @@ go get github.com/peutes/go-cache-fetcher
 
 ## You can fetch various functions with cache.
 
-You can fetch various functions with cache eg. Redis, Memcached, other cache system, and so on.
+You can fetch various function responses with cache eg. Redis, Memcached, other cache system, and so on.
 
 For example, The first time, You can set the data to Redis while getting the response of the function.
 The second time, If cached, You can get from Redis.
