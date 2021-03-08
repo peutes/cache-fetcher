@@ -56,7 +56,7 @@ fetcher := cachefetcher.NewCacheFetcher(
 fetcher.SetKey([]string{"prefix", "str"}, "hoge")
 // fetcher.Key() == "prefix_str_hoge"
 
-// This is fetcher function, For example, read from DB.
+// This is fetcher function, For example, assume to read from DB.
 read := func(s string) string {
   return s + " fetch!!"
 }
