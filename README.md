@@ -79,6 +79,8 @@ err = fetcher.Fetch(10*time.Second, &dst, func() (string, error) {
 Key element support int, float, bool, complex, byte, time, slice, array, "struct with `String()` method" in addition to string.
 
 The client supports serialization with gob serializer.
+The cache saves serialized strings.
+
 
 ```go
 fetcher.SetKey([]string{"prefix", "any"}, 1, 0.1, true, &[]string{"a", "b"}, time.Unix(0, 0).In(time.UTC))
