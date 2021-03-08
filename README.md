@@ -61,14 +61,14 @@ read := func(s string) string {
   return s + " fetch!!"
 }
 
-// The first fetch is from the fetcher. Not call cache.
+// The first fetch is from the fetcher function. Not call cache.
 var dst string
 err := fetcher.Fetch(10*time.Second, &dst, func() (string, error) {
   return read("first"), nil
 })
 // dst == "first fetch!!" <- get from function
 
-// The second fetch is from the expired cache. Not call fetcher.
+// The second fetch is from the expired cache. Not call fetcher function.
 err = fetcher.Fetch(10*time.Second, &dst, func() (string, error) {
   return read("second"), nil
 })
