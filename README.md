@@ -23,7 +23,7 @@ Simple cache control is that set key and fetch with fetcher function.
 
 `SetKey` and `Fetch` functions are sufficient for the fetcher client.
 
-`Fetch` needs to setted the fetcher function, destination value pointer and cache expiration. 
+`Fetch` needs to set the fetcher function, destination value pointer and cache expiration. 
 
 - `SetKey()`
 - `Fetch()`
