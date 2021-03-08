@@ -14,19 +14,43 @@ import (
 const host = "localhost:6379"
 
 var (
-	options  = &cachefetcher.Options{DebugPrintMode: true}
-	client   *cachefetcher.SampleCacheClientImpl
-	ctx      = context.Background()
-	timeType = time.Unix(0, 0).In(time.UTC)
+	options     = &cachefetcher.Options{DebugPrintMode: true}
+	redisClient *cachefetcher.SimpleRedisClientImpl
+	ctx         = context.Background()
+	timeType    = time.Unix(0, 0).In(time.UTC)
 )
 
 type (
 	unique      string
 	testStruct1 struct{}
 	testStruct2 struct {
-		A int
-		B string
-		C []bool
+		I     int
+		S     string
+		B     bool
+		F     float64
+		I8    int8
+		I64   int64
+		UI8   uint8
+		UI64  uint64
+		IP    *int
+		SP    *string
+		BP    *bool
+		FP    *float64
+		I8P   *int8
+		I64P  *int64
+		UI8P  *uint8
+		UI64P *uint64
+		IS    []int
+		SS    []string
+		BS    []bool
+		FS    []float64
+		IM    map[int]int
+		BM    map[bool]bool
+		SM    map[string]string
+		FM    map[float64]float64
+	}
+	testStruct3 struct {
+		P *testStruct2
 	}
 )
 
@@ -36,15 +60,14 @@ func (testStruct1) String() string {
 
 // nolint: staticcheck
 func TestMain(m *testing.M) {
-	client = &cachefetcher.SampleCacheClientImpl{
+	redisClient = &cachefetcher.SimpleRedisClientImpl{
 		Rdb: redis.NewClient(&redis.Options{Addr: host}),
-		Ctx: ctx,
 	}
 	m.Run()
 }
 
 func before() {
-	client.Rdb.FlushDB(ctx)
+	redisClient.Rdb.FlushDB(ctx)
 }
 
 func TestClient(t *testing.T) {
@@ -52,12 +75,12 @@ func TestClient(t *testing.T) {
 
 	// nolint: goconst
 	want := "value"
-	if err := client.Set("key", want, 0); err != nil {
+	if err := redisClient.Set("key", want, 0); err != nil {
 		t.Error(err)
 	}
 
 	var val string
-	err := client.Get("key", &val)
+	err := redisClient.Get("key", &val)
 	if err != nil {
 		t.Error(err)
 	}
@@ -65,8 +88,8 @@ func TestClient(t *testing.T) {
 		t.Errorf("%#v is not %#v", val, want)
 	}
 
-	err = client.Get("key2", &val)
-	if err != nil && !client.IsErrCacheMiss(err) {
+	err = redisClient.Get("key2", &val)
+	if err != nil && !redisClient.IsErrCacheMiss(err) {
 		t.Errorf("failed: %#v, %#v", val, err)
 	}
 }
@@ -169,7 +192,7 @@ func Test_SetKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := cachefetcher.NewCacheFetcher(client, options)
+			f := cachefetcher.NewCacheFetcher(redisClient, options)
 			if err := f.SetKey(tt.args.prefixes, tt.args.elements...); !errors.Is(err, tt.err) {
 				t.Errorf("%#v, %#v", tt.name, err)
 			}
@@ -198,7 +221,8 @@ func TestSetKeyWithHash(t *testing.T) {
 	}{
 		{
 			"prefix",
-			args{[]string{"prefix", "key"},
+			args{
+				[]string{"prefix", "key"},
 				nil,
 			},
 			"prefix_key",
@@ -235,7 +259,7 @@ func TestSetKeyWithHash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := cachefetcher.NewCacheFetcher(client, options)
+			f := cachefetcher.NewCacheFetcher(redisClient, options)
 			if err := f.SetHashKey(tt.args.prefixes, tt.args.elements...); !errors.Is(err, tt.err) {
 				t.Errorf("%#v, %#v", tt.name, err)
 			}
@@ -251,7 +275,7 @@ func TestSetKeyWithHash(t *testing.T) {
 func TestFetch(t *testing.T) {
 	before()
 
-	f := cachefetcher.NewCacheFetcher(client, options)
+	f := cachefetcher.NewCacheFetcher(redisClient, options)
 	if err := f.SetKey([]string{"prefix", "key ptr"}, "hoge", "fuga"); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -292,7 +316,7 @@ func TestFetch(t *testing.T) {
 func TestSet(t *testing.T) {
 	before()
 
-	f := cachefetcher.NewCacheFetcher(client, options)
+	f := cachefetcher.NewCacheFetcher(redisClient, options)
 	if err := f.SetKey([]string{"prefix", "key"}, "hoge", "fuga"); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -310,12 +334,14 @@ func TestGetString(t *testing.T) {
 	before()
 
 	want := "value"
-	f := cachefetcher.NewCacheFetcher(client, options)
+
+	// use no serializer
+	f := cachefetcher.NewCacheFetcher(redisClient, &cachefetcher.Options{DebugPrintMode: true})
 	if err := f.SetHashKey([]string{"prefix", "key"}, want); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	if err := f.Set(want, 10*time.Second); err != nil {
+	if err := f.SetString(want, 10*time.Second); err != nil {
 		t.Errorf("%#v", err)
 	}
 
@@ -331,6 +357,11 @@ func TestGetString(t *testing.T) {
 	if dst != want {
 		t.Errorf("%#v, is not %#v", dst, want)
 	}
+
+	// direct get
+	if dst2 := redisClient.Rdb.Get(ctx, f.Key()).Val(); dst2 != want {
+		t.Errorf("%#v, is not %#v", dst2, want)
+	}
 }
 
 func TestGetInt(t *testing.T) {
@@ -339,7 +370,7 @@ func TestGetInt(t *testing.T) {
 	e := 100
 	var dst int
 
-	f := cachefetcher.NewCacheFetcher(client, options)
+	f := cachefetcher.NewCacheFetcher(redisClient, options)
 	if err := f.SetKey([]string{"prefix", "key"}, e); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -348,8 +379,7 @@ func TestGetInt(t *testing.T) {
 		t.Errorf("%#v", err)
 	}
 
-	err := f.Get(&dst)
-	if err != nil {
+	if err := f.Get(&dst); err != nil {
 		t.Errorf("%#v", err)
 	}
 
@@ -368,7 +398,7 @@ func TestGetSlice(t *testing.T) {
 	e := []string{"a", "b", "c"}
 	var dst []string
 
-	f := cachefetcher.NewCacheFetcher(client, options)
+	f := cachefetcher.NewCacheFetcher(redisClient, options)
 	if err := f.SetKey([]string{"prefix", "key"}, e); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -377,8 +407,7 @@ func TestGetSlice(t *testing.T) {
 		t.Errorf("%#v", err)
 	}
 
-	err := f.Get(&dst)
-	if err != nil {
+	if err := f.Get(&dst); err != nil {
 		t.Errorf("%#v", err)
 	}
 
@@ -397,7 +426,7 @@ func TestGetMap(t *testing.T) {
 	e := map[int]string{1: "a", 2: "b", 3: "c"}
 	var dst map[int]string
 
-	f := cachefetcher.NewCacheFetcher(client, options)
+	f := cachefetcher.NewCacheFetcher(redisClient, options)
 	if err := f.SetKey([]string{"prefix", "key"}, "map"); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -406,8 +435,7 @@ func TestGetMap(t *testing.T) {
 		t.Errorf("%#v", err)
 	}
 
-	err := f.Get(&dst)
-	if err != nil {
+	if err := f.Get(&dst); err != nil {
 		t.Errorf("%#v", err)
 	}
 
@@ -423,19 +451,54 @@ func TestGetMap(t *testing.T) {
 func TestGetStruct(t *testing.T) {
 	before()
 
-	e := &testStruct2{A: 10, B: "abc", C: []bool{true, false}}
-	var dst testStruct2
+	i := 10
+	b := true
+	s := "abc"
+	ft := 0.123
+	i8 := int8(20)
+	i64 := int64(30)
+	ui8 := uint8(40)
+	ui64 := uint64(50)
 
-	f := cachefetcher.NewCacheFetcher(client, options)
-	if err := f.SetKey([]string{"prefix", "key"}, "struct"); err != nil {
+	e2 := &testStruct2{
+		I:     i,
+		B:     b,
+		S:     s,
+		F:     ft,
+		I8:    i8,
+		I64:   i64,
+		UI8:   ui8,
+		UI64:  ui64,
+		IP:    &i,
+		BP:    &b,
+		SP:    &s,
+		FP:    &ft,
+		I8P:   &i8,
+		I64P:  &i64,
+		UI8P:  &ui8,
+		UI64P: &ui64,
+		IS:    []int{i, i, i},
+		BS:    []bool{b, b, b},
+		SS:    []string{s, s, s},
+		FS:    []float64{ft, ft, ft},
+		IM:    map[int]int{1: i, 2: i, 3: i},
+		BM:    map[bool]bool{true: b, false: b},
+		SM:    map[string]string{"a": s, "bb": s, "ccc": s},
+		FM:    map[float64]float64{0.1: ft, 0.2: ft, 0.3: ft},
+	}
+
+	var dst2 testStruct2
+
+	f := cachefetcher.NewCacheFetcher(redisClient, options)
+	if err := f.SetKey([]string{"prefix", "key"}, "struct1"); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	if err := f.Set(e, 10*time.Second); err != nil {
+	if err := f.Set(e2, 10*time.Second); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	err := f.Get(&dst)
+	err := f.Get(&dst2)
 	if err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -444,15 +507,63 @@ func TestGetStruct(t *testing.T) {
 		t.Errorf("%#v", f.IsCached())
 	}
 
-	if !reflect.DeepEqual(&dst, e) {
-		t.Errorf("%#v is not %#v", dst, e)
+	if !reflect.DeepEqual(dst2, *e2) {
+		t.Errorf("%#v is not %#v", dst2, e2)
+	}
+
+	el := []testStruct2{*e2, *e2}
+	var dstList []testStruct2
+
+	f2 := cachefetcher.NewCacheFetcher(redisClient, options)
+	if err := f2.SetKey([]string{"prefix", "key"}, "struct2"); err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	if err := f2.Set(el, 10*time.Second); err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	if err := f2.Get(&dstList); err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	if !f2.IsCached() {
+		t.Errorf("%#v", f2.IsCached())
+	}
+
+	if !reflect.DeepEqual(dstList, el) {
+		t.Errorf("%#v is not %#v", dstList, el)
+	}
+
+	e3 := &testStruct3{P: e2}
+	var dst3 testStruct3
+
+	f3 := cachefetcher.NewCacheFetcher(redisClient, options)
+	if err := f3.SetKey([]string{"prefix", "key"}, "struct3"); err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	if err := f3.Set(e3, 10*time.Second); err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	if err := f3.Get(&dst3); err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	if !f3.IsCached() {
+		t.Errorf("%#v", f3.IsCached())
+	}
+
+	if !reflect.DeepEqual(dst3, *e3) {
+		t.Errorf("%#v is not %#v", dst3, e3)
 	}
 }
 
 func TestDel(t *testing.T) {
 	before()
 
-	f := cachefetcher.NewCacheFetcher(client, options)
+	f := cachefetcher.NewCacheFetcher(redisClient, options)
 	if err := f.SetKey([]string{"prefix", "key"}, "hoge", "fuga"); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -469,8 +580,7 @@ func TestDel(t *testing.T) {
 	}
 
 	var dst string
-	err := f.Get(&dst)
-	if err != nil && !errors.Is(err, redis.Nil) {
+	if err := f.Get(&dst); err != nil && !errors.Is(err, redis.Nil) {
 		t.Errorf("%#v", err)
 	}
 	if dst != "" {

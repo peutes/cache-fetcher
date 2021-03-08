@@ -2,7 +2,9 @@
 package cachefetcher
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"encoding/gob"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -20,12 +22,16 @@ type (
 	CacheFetcher interface {
 		SetKey(prefixes []string, elements ...interface{}) error
 		SetHashKey(prefixes []string, elements ...interface{}) error
+		Key() string
+
 		Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) error
 		Set(value interface{}, expiration time.Duration) error
 		Get(dst interface{}) error
+		SetString(value string, expiration time.Duration) error
 		GetString() (string, error)
 		Del() error
-		Key() string
+
+		GobRegister(value interface{})
 		IsCached() bool
 	}
 
@@ -39,16 +45,18 @@ type (
 
 	// Options is extended settings.
 	Options struct {
-		Group          *singleflight.Group
-		GroupTimeout   time.Duration
-		DebugPrintMode bool
+		Group           *singleflight.Group
+		GroupTimeout    time.Duration
+		DebugPrintMode  bool
+		IsNotSerialized bool // serialize default with using gob serializer.
 	}
 
 	cacheFetcherImpl struct {
-		client         Client
-		group          *singleflight.Group
-		groupTimeout   time.Duration
-		debugPrintMode bool
+		client          Client
+		group           *singleflight.Group
+		groupTimeout    time.Duration
+		debugPrintMode  bool
+		isNotSerialized bool
 
 		key      string
 		isCached bool // is used cache?
@@ -88,10 +96,11 @@ func NewCacheFetcher(client Client, options *Options) CacheFetcher {
 	}
 
 	return &cacheFetcherImpl{
-		client:         client,
-		group:          options.Group,
-		groupTimeout:   options.GroupTimeout,
-		debugPrintMode: options.DebugPrintMode,
+		client:          client,
+		group:           options.Group,
+		groupTimeout:    options.GroupTimeout,
+		debugPrintMode:  options.DebugPrintMode,
+		isNotSerialized: options.IsNotSerialized,
 	}
 }
 
@@ -123,6 +132,11 @@ func (f *cacheFetcherImpl) setKey(prefixes []string, elements []interface{}, use
 
 	f.key = strings.ReplaceAll(strings.Join(s, sep), " ", sep)
 	return nil
+}
+
+// Get key.
+func (f *cacheFetcherImpl) Key() string {
+	return f.key
 }
 
 func (f *cacheFetcherImpl) toStringsForElements(elements ...interface{}) (string, error) {
@@ -186,7 +200,6 @@ func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 			return err
 		}
 
-		reflect.ValueOf(dst).Elem().Set(reflect.ValueOf(res.Val))
 		return nil
 
 	case <-time.After(f.groupTimeout):
@@ -196,13 +209,13 @@ func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 
 func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetcher interface{}) func() (interface{}, error) {
 	return func() (interface{}, error) {
-		cRes, err := f.get(dst)()
+		_, err := f.get(dst, false)()
 		if f.isErrOtherThanCacheMiss(err) {
 			return nil, err
 		}
 
 		if f.isCached {
-			return cRes, nil
+			return nil, nil
 		}
 
 		// fetch function
@@ -215,21 +228,23 @@ func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetc
 		if reflect.TypeOf(fRes).Kind() == reflect.Ptr {
 			fRes = reflect.ValueOf(fRes).Elem().Interface()
 		}
-		if err := f.set(fRes, expiration); err != nil {
+
+		isCached := f.isCached
+		if err := f.set(fRes, expiration, false); err != nil {
 			return nil, err
 		}
+		f.isCached = isCached // replace get's isCached
 
-		return fRes, nil
+		reflect.ValueOf(dst).Elem().Set(reflect.ValueOf(fRes))
+		return nil, nil
 	}
 }
 
 // Set cache.
 func (f *cacheFetcherImpl) Set(value interface{}, expiration time.Duration) error {
-	f.isCached = false
-	if err := f.set(value, expiration); err != nil {
+	if err := f.set(value, expiration, false); err != nil {
 		return err
 	}
-	f.isCached = true
 
 	if err := f.debugPrint(); err != nil {
 		return err
@@ -237,13 +252,41 @@ func (f *cacheFetcherImpl) Set(value interface{}, expiration time.Duration) erro
 	return nil
 }
 
-func (f *cacheFetcherImpl) set(value interface{}, expiration time.Duration) error {
-	return f.client.Set(f.key, value, expiration)
+// Set cache.
+func (f *cacheFetcherImpl) SetString(value string, expiration time.Duration) error {
+	if err := f.set(value, expiration, true); err != nil {
+		return err
+	}
+
+	if err := f.debugPrint(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *cacheFetcherImpl) set(value interface{}, expiration time.Duration, isStringMode bool) error {
+	f.isCached = false
+	v := value
+	if !(isStringMode || f.isNotSerialized) {
+		buf := new(bytes.Buffer)
+		if err := gob.NewEncoder(buf).Encode(value); err != nil {
+			return err
+		}
+
+		v = buf.String()
+	}
+
+	if err := f.client.Set(f.key, v, expiration); err != nil {
+		return err
+	}
+
+	f.isCached = true
+	return nil
 }
 
 // Get cache as any interface.
 func (f *cacheFetcherImpl) Get(dst interface{}) error {
-	ch := f.group.DoChan(f.key, f.get(dst))
+	ch := f.group.DoChan(f.key, f.get(dst, false))
 
 	select {
 	case res := <-ch:
@@ -261,26 +304,10 @@ func (f *cacheFetcherImpl) Get(dst interface{}) error {
 	}
 }
 
-func (f *cacheFetcherImpl) get(dst interface{}) func() (interface{}, error) {
-	return func() (interface{}, error) {
-		f.isCached = false
-
-		if reflect.TypeOf(dst).Kind() != reflect.Ptr {
-			return nil, fmt.Errorf("dst: %w", ErrNoPointerType)
-		}
-
-		if err := f.client.Get(f.key, dst); err != nil {
-			return nil, err
-		}
-
-		f.isCached = true
-		return reflect.ValueOf(dst).Elem().Interface(), nil
-	}
-}
-
 // Get cache as string.
 func (f *cacheFetcherImpl) GetString() (string, error) {
-	ch := f.group.DoChan(f.key, f.getString())
+	var dst string
+	ch := f.group.DoChan(f.key, f.get(&dst, true))
 
 	select {
 	case res := <-ch:
@@ -291,25 +318,37 @@ func (f *cacheFetcherImpl) GetString() (string, error) {
 		if err := f.debugPrint(); err != nil {
 			return "", err
 		}
-		return res.Val.(string), nil
+		return dst, nil
 
 	case <-time.After(f.groupTimeout):
 		return "", ErrTimeout
 	}
 }
 
-func (f *cacheFetcherImpl) getString() func() (interface{}, error) {
+func (f *cacheFetcherImpl) get(dst interface{}, isStringMode bool) func() (interface{}, error) {
 	return func() (interface{}, error) {
 		f.isCached = false
 
-		var dst string
-		err := f.client.Get(f.key, &dst)
-		if err != nil {
+		if reflect.TypeOf(dst).Kind() != reflect.Ptr {
+			return nil, fmt.Errorf("dst: %w", ErrNoPointerType)
+		}
+
+		var s string
+		if err := f.client.Get(f.key, &s); err != nil {
 			return nil, err
 		}
 
+		if isStringMode || f.isNotSerialized {
+			reflect.ValueOf(dst).Elem().SetString(s)
+		} else {
+			buf := bytes.NewBufferString(s)
+			if err := gob.NewDecoder(buf).Decode(dst); err != nil {
+				return nil, err
+			}
+		}
+
 		f.isCached = true
-		return dst, nil
+		return nil, nil
 	}
 }
 
@@ -330,9 +369,9 @@ func (f *cacheFetcherImpl) Del() error {
 	return nil
 }
 
-// Get key.
-func (f *cacheFetcherImpl) Key() string {
-	return f.key
+// GobRegister is register gob.
+func (f *cacheFetcherImpl) GobRegister(value interface{}) {
+	gob.Register(value)
 }
 
 // Get cached.

@@ -77,8 +77,7 @@ err := f.Fetch(10*time.Second, &dst, func() (string, error) {
 
 Key element support int, float, bool, complex, byte, time, slice, array, "struct with `String()` method" in addition to string.
 
-If the client supports serialization when `Set` and `Get`, Fetcher response is anything interface.
-For example, you can set serialize or encode json, Base64 and so on.
+The client supports serialization with gob serializer.
 
 ```go
 f.SetKey([]string{"prefix", "any"}, 1, 0.1, true, &[]string{"a", "b"}, time.Unix(0, 0).In(time.UTC))
@@ -99,33 +98,43 @@ err := f.Fetch(10*time.Second, &dst, fetcher)
 
 This cache fetcher needs cache client implement. The client needs `Set` `Get` `Del` `IsErrCacheMiss` functions.
 
-sample: https://github.com/peutes/go-cache-fetcher/blob/main/cachefetcher/sample_cache_client.go
+The simple redis client is https://github.com/peutes/go-cache-fetcher/blob/main/cachefetcher/simple_redis_client.go
 
 ```go
-type ClientImpl struct {
-  Rdb *redis.Client
+// SimpleRedisClientImpl is a sample client implementation.
+type SimpleRedisClientImpl struct {
+    Rdb *redis.Client
 }
 
-func (i *ClientImpl) Set(key string, value interface{}, expiration time.Duration) error {
-  // You can serialize or encode json, Base64 and so on.
-  return i.Rdb.Set(ctx, key, value, expiration).Err()
+// Set is an implementation of the function in the sample client.
+func (i *SimpleRedisClientImpl) Set(key string, value interface{}, expiration time.Duration) error {
+    // You need an implementation to set from the cache.
+    return i.Rdb.Set(ctx, key, value, expiration).Err()
 }
 
-func (i *ClientImpl) Get(key string, dst interface{}) error {
-  // You can deserialize or decode json, Base64 and so on.
-  v, err := i.Rdb.Get(ctx, key).Result()
-  reflect.ValueOf(dst).Elem().SetString(v)
-  return err
+// Get is an implementation of the function in the sample client.
+func (i *SimpleRedisClientImpl) Get(key string, dst interface{}) error {
+    // You need an implementation to get from the cache.
+    v, err := i.Rdb.Get(ctx, key).Result()
+    if err != nil {
+        return err
+    }
+
+    reflect.ValueOf(dst).Elem().SetString(v)
+    return nil
 }
 
-func (i *ClientImpl) Del(key string) error {
-  return i.Rdb.Del(ctx, key).Err()
-} 
-
-// return a decision when cache miss err.
-func (i *ClientImpl) IsErrCacheMiss(err error) bool {
-  return errors.Is(err, redis.Nil)
+// Del is an implementation of the function in the sample client.
+func (i *SimpleRedisClientImpl) Del(key string) error {
+    return i.Rdb.Del(ctx, key).Err()
 }
+
+// IsErrCacheMiss is an implementation of the function in the sample client.
+// Please return the decision at the time of cache miss err.
+func (i *SimpleRedisClientImpl) IsErrCacheMiss(err error) bool {
+    return errors.Is(err, redis.Nil)
+}
+
 ```
 
 ### Options
@@ -136,8 +145,8 @@ If `DebugPrintMode` set true, the cache key will be printed to the terminal.
 
 ```go
 cachefetcher.Options{
-	Group:          &singleflight.Group{}, // default
-	GroupTimeout:   30 * time.Second,      // default
-	DebugPrintMode: true,                  // default is false
+    Group:          &singleflight.Group{}, // default
+    GroupTimeout:   30 * time.Second,      // default
+    DebugPrintMode: true,                  // default is false
 })
 ```
