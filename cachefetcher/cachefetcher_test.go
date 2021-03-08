@@ -21,9 +21,9 @@ var (
 )
 
 type (
-	unique      string
-	testStruct1 struct{}
-	testStruct2 struct {
+	unique          string
+	testStructEmpty struct{}
+	testStruct      struct {
 		I     int
 		S     string
 		B     bool
@@ -50,13 +50,13 @@ type (
 		SM    map[string]string
 		FM    map[float64]float64
 	}
-	testStruct3 struct {
-		P *testStruct2
+	testStruct2 struct {
+		P *testStruct
 	}
 )
 
-func (testStruct1) String() string {
-	return "testStruct1"
+func (testStructEmpty) String() string {
+	return "testStructEmpty"
 }
 
 // nolint: staticcheck
@@ -116,8 +116,8 @@ func Test_SetKey(t *testing.T) {
 	arr := [2]bool{b0, b1}
 	m := map[interface{}]interface{}{b0: b0, i0: i0, c: c, f0: f0, s: s}
 
-	ts1 := &testStruct1{}
-	ts2 := &testStruct2{}
+	ts1 := &testStructEmpty{}
+	ts2 := &testStruct{}
 
 	fc := func() bool { return b0 }
 	ch := make(chan int)
@@ -170,7 +170,7 @@ func Test_SetKey(t *testing.T) {
 				[]string{"prefix", "key"},
 				[]interface{}{ts1, zerotime},
 			},
-			"prefix_key_testStruct1_1970-01-01_00:00:00_+0000_UTC",
+			"prefix_key_testStructEmpty_1970-01-01_00:00:00_+0000_UTC",
 			nil,
 		},
 		{
@@ -481,7 +481,7 @@ func TestGetStruct(t *testing.T) {
 	ui8 := uint8(40)
 	ui64 := uint64(50)
 
-	e2 := &testStruct2{
+	e := &testStruct{
 		I:     i,
 		B:     b,
 		S:     s,
@@ -508,18 +508,18 @@ func TestGetStruct(t *testing.T) {
 		FM:    map[float64]float64{0.1: ft, 0.2: ft, 0.3: ft},
 	}
 
-	var dst2 testStruct2
+	var dst testStruct
 
 	f := cachefetcher.NewCacheFetcher(redisClient, options)
 	if err := f.SetKey([]string{"prefix", "key"}, "struct1"); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	if err := f.Set(e2, 10*time.Second); err != nil {
+	if err := f.Set(e, 10*time.Second); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	err := f.Get(&dst2)
+	err := f.Get(&dst)
 	if err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -528,12 +528,12 @@ func TestGetStruct(t *testing.T) {
 		t.Errorf("%#v", f.IsCached())
 	}
 
-	if !reflect.DeepEqual(dst2, *e2) {
-		t.Errorf("%#v is not %#v", dst2, e2)
+	if !reflect.DeepEqual(dst, *e) {
+		t.Errorf("%#v is not %#v", dst, e)
 	}
 
-	el := []testStruct2{*e2, *e2}
-	var dstList []testStruct2
+	el := []testStruct{*e, *e}
+	var dstList []testStruct
 
 	f2 := cachefetcher.NewCacheFetcher(redisClient, options)
 	if err := f2.SetKey([]string{"prefix", "key"}, "struct2"); err != nil {
@@ -556,19 +556,19 @@ func TestGetStruct(t *testing.T) {
 		t.Errorf("%#v is not %#v", dstList, el)
 	}
 
-	e3 := &testStruct3{P: e2}
-	var dst3 testStruct3
+	e2 := &testStruct2{P: e}
+	var dst2 testStruct2
 
 	f3 := cachefetcher.NewCacheFetcher(redisClient, options)
 	if err := f3.SetKey([]string{"prefix", "key"}, "struct3"); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	if err := f3.Set(e3, 10*time.Second); err != nil {
+	if err := f3.Set(e2, 10*time.Second); err != nil {
 		t.Errorf("%#v", err)
 	}
 
-	if err := f3.Get(&dst3); err != nil {
+	if err := f3.Get(&dst2); err != nil {
 		t.Errorf("%#v", err)
 	}
 
@@ -576,8 +576,8 @@ func TestGetStruct(t *testing.T) {
 		t.Errorf("%#v", f3.IsCached())
 	}
 
-	if !reflect.DeepEqual(dst3, *e3) {
-		t.Errorf("%#v is not %#v", dst3, e3)
+	if !reflect.DeepEqual(dst2, *e2) {
+		t.Errorf("%#v is not %#v", dst2, e2)
 	}
 }
 
