@@ -190,7 +190,7 @@ func (i *SimpleRedisClientImpl) IsErrCacheMiss(err error) bool {
 
 ### Options
 
-This fetcher can use single flight with setting option.
+This fetcher client can use single flight with setting option.
 
 If `DebugPrintMode` set true, the cache key will be printed to the terminal.
 
