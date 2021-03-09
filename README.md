@@ -2,12 +2,7 @@
 
 This is the fetcher function response's cache client for golang using Redis or other cache system.
 
-
-## Installation
-
-```
-go get github.com/peutes/go-cache-fetcher-client
-```
+## Characteristics
 
 ### ✅  You can fetch various functions with cache.
 
@@ -46,6 +41,12 @@ You can `Set()`, `Get()`, `Del()` individually. If you want key, can use `Key()`
 - `Key()`
 - `IsCached()`
 - `GobRegister()`
+
+## Installation
+
+```
+go get github.com/peutes/go-cache-fetcher-client
+```
 
 ## Usage
 
