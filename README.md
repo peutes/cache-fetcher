@@ -132,7 +132,7 @@ The element supports more than just string type. If you want use interface{} or 
 ```
 
 ### Another cache control
-If you want a hash key, can use `SetHashKey` instead of `SetKey`.
+If you needs a hash key, can use `SetHashKey` instead of `SetKey`.
 
 You can `Set()`, `Get()`, `Del()` individually. If you want key, can use `Key()`. If you want boolean result that is cached, can use `IsCached()`.
 
