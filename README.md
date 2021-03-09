@@ -65,7 +65,7 @@ err = fetcher.Fetch(10*time.Second, &dst, func() (string, error) {
 
 ### Support Type
 
-Key element support int, float, bool, complex, byte, time, slice, array, "struct with `String()` method" in addition to string.
+The key element support int, float, bool, complex, byte, time, slice, array, "struct with `String()` method" in addition to string.
 
 The client supports serialization with gob serializer.
 The cache saves serialized strings.
@@ -85,24 +85,7 @@ err := fetcher.Fetch(10*time.Second, &dst, read)
 
 ```
 
-### Another cache control
-If you need a hash key, can use `SetHashKey` instead of `SetKey`.
-
-You can `Set()`, `Get()`, `Del()` individually. If you want key, can use `Key()`. If you want boolean result that is cached, can use `IsCached()`.
-
-- `SetHashKey()`
-- `Set()`
-- `Get()`
-- `SetString()`
-- `GetString()`
-- `Del()`
-- `Key()`
-- `IsCached()`
-- `GobRegister()`
-
-### Serialize
-
-This client supports more than just string type. If you want use interface{} or another unique type, use `GobRegister()` to register type.
+The element supports more than just string type. If you want use interface{} or another unique type, use `GobRegister()` to register type.
 
 ```go
     i := 10
