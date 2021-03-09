@@ -4,21 +4,19 @@ This is the fetcher function response's cache client for golang using Redis or o
 
 ## Characteristics
 
-### ✅  This client supports basic logic of the cache fetcher client.
+### ✅  This client module supports basic logic of the cache fetcher client.
 
-This client supports the basic cache fetcher client.
 You can fetch various function responses with cache eg. Redis, Memcached, other cache system, and so on.
 For example, The first time, You can set the data to Redis while getting the response of the function.
 The second time, If cached, You can get from Redis.
 
 ### ✅  This client is auto generation key from elements.
 
-This client is auto generation key from elements.
 you don't have to think about making a key logic. Key's generation logic can be hidden from the main logic.
 
 ### ✅  Simple cache control
 
-Simple cache control is that set key and fetch with fetcher function.
+Cache control is very simple that set key and fetch with fetcher function.
 
 `SetKey` and `Fetch` functions are sufficient for this client.
 
