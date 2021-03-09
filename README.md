@@ -9,19 +9,23 @@ This is the fetcher function response's cache client for golang using Redis or o
 go get github.com/peutes/go-cache-fetcher-client
 ```
 
-## You can fetch various functions with cache.
+### ✅  You can fetch various functions with cache.
 
 You can fetch various function responses with cache eg. Redis, Memcached, other cache system, and so on.
 
 For example, The first time, You can set the data to Redis while getting the response of the function.
 The second time, If cached, You can get from Redis.
 
+### ✅  This client is auto generation key from elements.
 
-### Simple cache control
+This client is auto generation key from elements.
+you don't have to think about making a key logic. Key's generation logic can be hidden from the main logic.
+
+## Simple cache control
 
 Simple cache control is that set key and fetch with fetcher function.
 
-`SetKey` and `Fetch` functions are sufficient for the fetcher client.
+`SetKey` and `Fetch` functions are sufficient for this client.
 
 `Fetch` needs to set the fetcher function, destination value pointer and cache expiration. 
 
