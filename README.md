@@ -16,7 +16,7 @@ The second time, If cached, You can get from Redis.
 This client is auto generation key from elements.
 you don't have to think about making a key logic. Key's generation logic can be hidden from the main logic.
 
-## Simple cache control
+### ✅  Simple cache control
 
 Simple cache control is that set key and fetch with fetcher function.
 
