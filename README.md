@@ -131,6 +131,20 @@ The element supports more than just string type. If you want use interface{} or 
     err = fetcher.Get(&dst)
 ```
 
+### Another cache control
+If you need a hash key, can use `SetHashKey` instead of `SetKey`.
+
+You can `Set()`, `Get()`, `Del()` individually. If you want key, can use `Key()`. If you want boolean result that is cached, can use `IsCached()`.
+
+- `SetHashKey()`
+- `Set()`
+- `Get()`
+- `SetString()`
+- `GetString()`
+- `Del()`
+- `Key()`
+- `IsCached()`
+- `GobRegister()`
 
 
 ### implement cache client
