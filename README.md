@@ -10,9 +10,9 @@ You can fetch various function responses with cache eg. Redis, Memcached, other 
 For example, The first time, You can set the data to Redis while getting the response of the function.
 The second time, If cached, You can get from Redis.
 
-### ✅  This client is auto generation key from elements.
+### ✅  This client is auto generation cache key from elements.
 
-you don't have to think about making a key logic. Key's generation logic can be hidden from the main logic.
+you don't have to think about making a cache key logic. Key's generation logic can be hidden from the main logic.
 
 ### ✅  Simple cache control
 
