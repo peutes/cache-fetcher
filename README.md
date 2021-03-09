@@ -6,7 +6,7 @@ This is the fetcher function response's cache client for golang using Redis or o
 
 ### ✅  This client supports basic logic of the cache fetcher client.
 
-This client supports basic cache fetcher client.
+This client supports the basic cache fetcher client.
 You can fetch various function responses with cache eg. Redis, Memcached, other cache system, and so on.
 For example, The first time, You can set the data to Redis while getting the response of the function.
 The second time, If cached, You can get from Redis.
