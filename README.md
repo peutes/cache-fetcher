@@ -25,21 +25,6 @@ Cache control is very simple that set key and fetch with fetcher function.
 - `SetKey()`
 - `Fetch()`
 
-### Another cache control
-If you need a hash key, can use `SetHashKey` instead of `SetKey`.
-
-You can `Set()`, `Get()`, `Del()` individually. If you want key, can use `Key()`. If you want boolean result that is cached, can use `IsCached()`.
-
-- `SetHashKey()`
-- `Set()`
-- `Get()`
-- `SetString()`
-- `GetString()`
-- `Del()`
-- `Key()`
-- `IsCached()`
-- `GobRegister()`
-
 ## Installation
 
 ```
@@ -47,8 +32,6 @@ go get github.com/peutes/go-cache-fetcher-client
 ```
 
 ## Usage
-
-### how to use cachefetcher
 
 ```go
 fetcher := cachefetcher.NewCacheFetcher(
@@ -80,6 +63,8 @@ err = fetcher.Fetch(10*time.Second, &dst, func() (string, error) {
 
 ```
 
+### Support Type
+
 Key element support int, float, bool, complex, byte, time, slice, array, "struct with `String()` method" in addition to string.
 
 The client supports serialization with gob serializer.
@@ -99,6 +84,23 @@ err := fetcher.Fetch(10*time.Second, &dst, read)
 // dst == []int{1, 2, 3, 4, 5}
 
 ```
+
+### Another cache control
+If you need a hash key, can use `SetHashKey` instead of `SetKey`.
+
+You can `Set()`, `Get()`, `Del()` individually. If you want key, can use `Key()`. If you want boolean result that is cached, can use `IsCached()`.
+
+- `SetHashKey()`
+- `Set()`
+- `Get()`
+- `SetString()`
+- `GetString()`
+- `Del()`
+- `Key()`
+- `IsCached()`
+- `GobRegister()`
+
+### Serialize
 
 This client supports more than just string type. If you want use interface{} or another unique type, use `GobRegister()` to register type.
 
