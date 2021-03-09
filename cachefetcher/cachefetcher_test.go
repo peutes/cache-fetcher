@@ -2,6 +2,7 @@ package cachefetcher_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"reflect"
 	"testing"
@@ -41,6 +42,9 @@ type (
 		I64P  *int64
 		UI8P  *uint8
 		UI64P *uint64
+		INil  *int
+		SNil  *int
+		NullS sql.NullString
 		IS    []int
 		SS    []string
 		BS    []bool
@@ -314,6 +318,39 @@ func TestFetch(t *testing.T) {
 	}
 }
 
+func TestFetcherError(t *testing.T) {
+	before()
+
+	f := cachefetcher.NewCacheFetcher(redisClient, options)
+	if err := f.SetKey([]string{"prefix", "key ptr"}, "hoge", "fuga"); err != nil {
+		t.Errorf("%#v", err)
+	}
+
+	// first fetch read from fetcher.
+	errUnknown := errors.New("unknown error")
+
+	var dst string
+	want := "piyo"
+	if err := f.Fetch(10*time.Second, &dst, func() (string, error) {
+		return want, errUnknown
+	}); err != errUnknown {
+		t.Errorf("%#v", err)
+	}
+
+	if f.IsCached() {
+		t.Errorf("%#v", f.IsCached())
+	}
+
+	if dst != "" {
+		t.Errorf("%#v is not %#v", dst, want)
+	}
+
+	if err := f.Get(&dst); err != redis.Nil {
+		t.Errorf("%#v", err)
+	}
+
+}
+
 func TestSet(t *testing.T) {
 	before()
 
@@ -498,6 +535,9 @@ func TestGetStruct(t *testing.T) {
 		I64P:  &i64,
 		UI8P:  &ui8,
 		UI64P: &ui64,
+		INil:  nil,
+		SNil:  nil,
+		NullS: sql.NullString{String: s, Valid: true},
 		IS:    []int{i, i, i},
 		BS:    []bool{b, b, b},
 		SS:    []string{s, s, s},
