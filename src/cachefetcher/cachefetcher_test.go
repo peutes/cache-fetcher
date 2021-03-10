@@ -19,6 +19,7 @@ var (
 	redisClient *cachefetcher.SimpleRedisClientImpl
 	ctx         = context.Background()
 	zerotime    = time.Unix(0, 0).In(time.UTC)
+	factory     cachefetcher.Factory
 )
 
 type (
@@ -73,6 +74,7 @@ func TestMain(m *testing.M) {
 
 func before() {
 	redisClient.Rdb.FlushDB(ctx)
+	factory = cachefetcher.NewFactory(redisClient, options)
 }
 
 func TestClient(t *testing.T) {
@@ -197,7 +199,7 @@ func Test_SetKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := cachefetcher.NewCacheFetcher(redisClient, options)
+			f := factory.NewFetcher()
 			if err := f.SetKey(tt.args.prefixes, tt.args.elements...); !errors.Is(err, tt.err) {
 				t.Errorf("%#v, %#v", tt.name, err)
 			}
@@ -264,7 +266,7 @@ func TestSetKeyWithHash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := cachefetcher.NewCacheFetcher(redisClient, options)
+			f := factory.NewFetcher()
 			if err := f.SetHashKey(tt.args.prefixes, tt.args.elements...); !errors.Is(err, tt.err) {
 				t.Errorf("%#v, %#v", tt.name, err)
 			}
@@ -280,7 +282,7 @@ func TestSetKeyWithHash(t *testing.T) {
 func TestFetch(t *testing.T) {
 	before()
 
-	f := cachefetcher.NewCacheFetcher(redisClient, options)
+	f := factory.NewFetcher()
 	if err := f.SetKey([]string{"prefix", "key ptr"}, "hoge", "fuga"); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -321,7 +323,7 @@ func TestFetch(t *testing.T) {
 func TestFetcherError(t *testing.T) {
 	before()
 
-	f := cachefetcher.NewCacheFetcher(redisClient, options)
+	f := factory.NewFetcher()
 	if err := f.SetKey([]string{"prefix", "key ptr"}, "hoge", "fuga"); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -354,7 +356,7 @@ func TestFetcherError(t *testing.T) {
 func TestSet(t *testing.T) {
 	before()
 
-	f := cachefetcher.NewCacheFetcher(redisClient, options)
+	f := factory.NewFetcher()
 	if err := f.SetKey([]string{"prefix", "key"}, "hoge", "fuga"); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -374,7 +376,7 @@ func TestGetString(t *testing.T) {
 	want := "value"
 
 	// use no serializer
-	f := cachefetcher.NewCacheFetcher(redisClient, &cachefetcher.Options{DebugPrintMode: true})
+	f := factory.NewFetcher()
 	if err := f.SetHashKey([]string{"prefix", "key"}, want); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -408,7 +410,7 @@ func TestGetInt(t *testing.T) {
 	e := 100
 	var dst int
 
-	f := cachefetcher.NewCacheFetcher(redisClient, options)
+	f := factory.NewFetcher()
 	if err := f.SetKey([]string{"prefix", "key"}, e); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -436,7 +438,7 @@ func TestGetSlice(t *testing.T) {
 	e := []string{"a", "b", "c"}
 	var dst []string
 
-	f := cachefetcher.NewCacheFetcher(redisClient, options)
+	f := factory.NewFetcher()
 	if err := f.SetKey([]string{"prefix", "key"}, e); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -464,7 +466,7 @@ func TestGetMap(t *testing.T) {
 	e := map[int]string{1: "a", 2: "b", 3: "c"}
 	var dst map[int]string
 
-	f := cachefetcher.NewCacheFetcher(redisClient, options)
+	f := factory.NewFetcher()
 	if err := f.SetKey([]string{"prefix", "key"}, "map"); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -492,7 +494,7 @@ func TestGetFailed(t *testing.T) {
 	e := "a"
 	var dst int
 
-	f := cachefetcher.NewCacheFetcher(redisClient, options)
+	f := factory.NewFetcher()
 	if err := f.SetKey([]string{"prefix", "key"}, e); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -550,7 +552,7 @@ func TestGetStruct(t *testing.T) {
 
 	var dst testStruct
 
-	f := cachefetcher.NewCacheFetcher(redisClient, options)
+	f := factory.NewFetcher()
 	if err := f.SetKey([]string{"prefix", "key"}, "struct1"); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -575,7 +577,7 @@ func TestGetStruct(t *testing.T) {
 	el := []testStruct{*e, *e}
 	var dstList []testStruct
 
-	f2 := cachefetcher.NewCacheFetcher(redisClient, options)
+	f2 := factory.NewFetcher()
 	if err := f2.SetKey([]string{"prefix", "key"}, "struct2"); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -599,7 +601,7 @@ func TestGetStruct(t *testing.T) {
 	e2 := &testStruct2{P: e}
 	var dst2 testStruct2
 
-	f3 := cachefetcher.NewCacheFetcher(redisClient, options)
+	f3 := factory.NewFetcher()
 	if err := f3.SetKey([]string{"prefix", "key"}, "struct3"); err != nil {
 		t.Errorf("%#v", err)
 	}
@@ -624,7 +626,7 @@ func TestGetStruct(t *testing.T) {
 func TestDel(t *testing.T) {
 	before()
 
-	f := cachefetcher.NewCacheFetcher(redisClient, options)
+	f := factory.NewFetcher()
 	if err := f.SetKey([]string{"prefix", "key"}, "hoge", "fuga"); err != nil {
 		t.Errorf("%#v", err)
 	}
