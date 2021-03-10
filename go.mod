@@ -1,4 +1,4 @@
-module github.com/peutes/go-cache-fetcher
+module github.com/peutes/go-cache-fetcher/src
 
 go 1.15
 
