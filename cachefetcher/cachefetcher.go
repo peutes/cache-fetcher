@@ -206,7 +206,7 @@ func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 		}
 		reflect.ValueOf(dst).Elem().Set(reflect.ValueOf(res.Val))
 
-		if err := f.debugPrint(); err != nil {
+		if err := f.debugPrint(res.Shared); err != nil {
 			return err
 		}
 
@@ -255,7 +255,7 @@ func (f *cacheFetcherImpl) Set(value interface{}, expiration time.Duration) erro
 		return err
 	}
 
-	if err := f.debugPrint(); err != nil {
+	if err := f.debugPrint(false); err != nil {
 		return err
 	}
 	return nil
@@ -267,7 +267,7 @@ func (f *cacheFetcherImpl) SetString(value string, expiration time.Duration) err
 		return err
 	}
 
-	if err := f.debugPrint(); err != nil {
+	if err := f.debugPrint(false); err != nil {
 		return err
 	}
 	return nil
@@ -302,7 +302,7 @@ func (f *cacheFetcherImpl) Get(dst interface{}) error {
 		}
 		reflect.ValueOf(dst).Elem().Set(reflect.ValueOf(res.Val))
 
-		if err := f.debugPrint(); err != nil {
+		if err := f.debugPrint(res.Shared); err != nil {
 			return err
 		}
 		return nil
@@ -322,7 +322,7 @@ func (f *cacheFetcherImpl) GetString() (string, error) {
 			return "", res.Err
 		}
 
-		if err := f.debugPrint(); err != nil {
+		if err := f.debugPrint(res.Shared); err != nil {
 			return "", err
 		}
 		return res.Val.(string), nil
@@ -370,7 +370,7 @@ func (f *cacheFetcherImpl) Del() error {
 		return err
 	}
 
-	if err := f.debugPrint(); err != nil {
+	if err := f.debugPrint(false); err != nil {
 		return err
 	}
 	return nil
@@ -390,11 +390,11 @@ func (f *cacheFetcherImpl) isErrOtherThanCacheMiss(err error) bool {
 	return err != nil && !f.client.IsErrCacheMiss(err)
 }
 
-func (f *cacheFetcherImpl) debugPrint() error {
+func (f *cacheFetcherImpl) debugPrint(shared bool) error {
 	if f.options.DebugPrintMode {
 		pc, _, _, _ := runtime.Caller(skip)
 		names := strings.Split(runtime.FuncForPC(pc).Name(), "/")
-		_, err := pp.Printf("%+v: key: %+v, cache: %+v\n", names[len(names)-1], f.key, f.isCached)
+		_, err := pp.Printf("%+v: key:%+v, cache:%+v, shared:%+v\n", names[len(names)-1], f.key, f.isCached, shared)
 		return err
 	}
 	return nil
