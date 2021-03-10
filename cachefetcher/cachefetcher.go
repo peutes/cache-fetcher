@@ -391,10 +391,19 @@ func (f *cacheFetcherImpl) isErrOtherThanCacheMiss(err error) bool {
 }
 
 func (f *cacheFetcherImpl) debugPrint(shared bool) error {
+	var err error
 	if f.options.DebugPrintMode {
 		pc, _, _, _ := runtime.Caller(skip)
 		names := strings.Split(runtime.FuncForPC(pc).Name(), "/")
-		_, err := pp.Printf("%+v: key:%+v, shared:%+v, cache:%+v\n", names[len(names)-1], f.key, shared, f.isCached)
+
+		if f.isCached {
+			_, err = pp.Printf("%+v: key:%+v, cache:%+v\n", names[len(names)-1], f.key, f.isCached)
+		} else if shared {
+			_, err = pp.Printf("%+v: key:%+v, shared:%+v\n", names[len(names)-1], f.key, shared)
+		} else {
+			_, err = pp.Printf("%+v: key:%+v, cache:%+v, shared:%+v\n", names[len(names)-1], f.key, f.isCached, shared)
+		}
+
 		return err
 	}
 	return nil
