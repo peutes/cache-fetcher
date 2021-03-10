@@ -19,6 +19,11 @@ import (
 
 type (
 	// CacheFetcher have main module functions.
+	Factory interface {
+		NewFetcher() CacheFetcher
+	}
+
+	// CacheFetcher have main module functions.
 	CacheFetcher interface {
 		SetKey(prefixes []string, elements ...interface{}) error
 		SetHashKey(prefixes []string, elements ...interface{}) error
@@ -51,12 +56,14 @@ type (
 		IsNotSerialized bool // serialize default with using gob serializer.
 	}
 
+	factoryImpl struct {
+		client  Client
+		options *Options
+	}
+
 	cacheFetcherImpl struct {
-		client          Client
-		group           *singleflight.Group
-		groupTimeout    time.Duration
-		debugPrintMode  bool
-		isNotSerialized bool
+		client  Client
+		options *Options
 
 		key      string
 		isCached bool // is used cache?
@@ -86,7 +93,7 @@ const (
 )
 
 // NewCacheFetcher is new method for CacheFetcher.
-func NewCacheFetcher(client Client, options *Options) CacheFetcher {
+func NewFactory(client Client, options *Options) Factory {
 	// default
 	if options == nil {
 		options = &Options{}
@@ -98,12 +105,13 @@ func NewCacheFetcher(client Client, options *Options) CacheFetcher {
 		options.GroupTimeout = defaultGroupTimeout
 	}
 
+	return &factoryImpl{client: client, options: options}
+}
+
+func (b *factoryImpl) NewFetcher() CacheFetcher {
 	return &cacheFetcherImpl{
-		client:          client,
-		group:           options.Group,
-		groupTimeout:    options.GroupTimeout,
-		debugPrintMode:  options.DebugPrintMode,
-		isNotSerialized: options.IsNotSerialized,
+		client:  b.client,
+		options: b.options,
 	}
 }
 
@@ -192,7 +200,7 @@ func (f *cacheFetcherImpl) toStringsForElements(elements ...interface{}) (string
 // Fetch function or cache.
 func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetcher interface{}) error {
 	select {
-	case res := <-f.group.DoChan(f.key, f.fetch(expiration, dst, fetcher)):
+	case res := <-f.options.Group.DoChan(f.key, f.fetch(expiration, dst, fetcher)):
 		if res.Err != nil {
 			return res.Err
 		}
@@ -203,7 +211,7 @@ func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 
 		return nil
 
-	case <-time.After(f.groupTimeout):
+	case <-time.After(f.options.GroupTimeout):
 		return ErrTimeout
 	}
 }
@@ -268,7 +276,7 @@ func (f *cacheFetcherImpl) SetString(value string, expiration time.Duration) err
 func (f *cacheFetcherImpl) set(value interface{}, expiration time.Duration, isStringMode bool) error {
 	f.isCached = false
 	v := value
-	if !(isStringMode || f.isNotSerialized) {
+	if !(isStringMode || f.options.IsNotSerialized) {
 		buf := new(bytes.Buffer)
 		if err := gob.NewEncoder(buf).Encode(value); err != nil {
 			return fmt.Errorf("%w: %+v", ErrGobSerialized, err)
@@ -288,7 +296,7 @@ func (f *cacheFetcherImpl) set(value interface{}, expiration time.Duration, isSt
 // Get cache as any interface.
 func (f *cacheFetcherImpl) Get(dst interface{}) error {
 	select {
-	case res := <-f.group.DoChan(f.key, f.get(dst, false)):
+	case res := <-f.options.Group.DoChan(f.key, f.get(dst, false)):
 		if res.Err != nil {
 			return res.Err
 		}
@@ -298,7 +306,7 @@ func (f *cacheFetcherImpl) Get(dst interface{}) error {
 		}
 		return nil
 
-	case <-time.After(f.groupTimeout):
+	case <-time.After(f.options.GroupTimeout):
 		return ErrTimeout
 	}
 }
@@ -308,7 +316,7 @@ func (f *cacheFetcherImpl) GetString() (string, error) {
 	var dst string
 
 	select {
-	case res := <-f.group.DoChan(f.key, f.get(&dst, true)):
+	case res := <-f.options.Group.DoChan(f.key, f.get(&dst, true)):
 		if res.Err != nil {
 			return "", res.Err
 		}
@@ -318,7 +326,7 @@ func (f *cacheFetcherImpl) GetString() (string, error) {
 		}
 		return dst, nil
 
-	case <-time.After(f.groupTimeout):
+	case <-time.After(f.options.GroupTimeout):
 		return "", ErrTimeout
 	}
 }
@@ -336,7 +344,7 @@ func (f *cacheFetcherImpl) get(dst interface{}, isStringMode bool) func() (inter
 			return nil, err
 		}
 
-		if isStringMode || f.isNotSerialized {
+		if isStringMode || f.options.IsNotSerialized {
 			reflect.ValueOf(dst).Elem().SetString(s)
 		} else {
 			buf := bytes.NewBufferString(s)
@@ -382,7 +390,7 @@ func (f *cacheFetcherImpl) isErrOtherThanCacheMiss(err error) bool {
 }
 
 func (f *cacheFetcherImpl) debugPrint() error {
-	if f.debugPrintMode {
+	if f.options.DebugPrintMode {
 		pc, _, _, _ := runtime.Caller(skip)
 		names := strings.Split(runtime.FuncForPC(pc).Name(), "/")
 		_, err := pp.Printf("%+v: key: %+v, cache: %+v\n", names[len(names)-1], f.key, f.isCached)
