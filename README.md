@@ -28,7 +28,7 @@ Cache control is very simple that set key and fetch with fetcher function.
 ## Installation
 
 ```
-go get github.com/peutes/go-cache-fetcher-client
+go get github.com/peutes/cachefetcher
 ```
 
 ## Usage
