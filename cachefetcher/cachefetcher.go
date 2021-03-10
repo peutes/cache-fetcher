@@ -394,7 +394,7 @@ func (f *cacheFetcherImpl) debugPrint(shared bool) error {
 	if f.options.DebugPrintMode {
 		pc, _, _, _ := runtime.Caller(skip)
 		names := strings.Split(runtime.FuncForPC(pc).Name(), "/")
-		_, err := pp.Printf("%+v: key:%+v, cache:%+v, shared:%+v\n", names[len(names)-1], f.key, f.isCached, shared)
+		_, err := pp.Printf("%+v: key:%+v, shared:%+v, cache:%+v\n", names[len(names)-1], f.key, shared, f.isCached)
 		return err
 	}
 	return nil
