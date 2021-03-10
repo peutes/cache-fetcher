@@ -13,7 +13,7 @@ lint: FORCE ## lint
 	golangci-lint run ./... --out-format tab -p style -D godot -D funlen -D ifshort -D paralleltest -D godox -D gomnd -D exhaustivestruct -D wsl -D gochecknoglobals -D nolintlint -D goprintffuncname -D nlreturn -D wrapcheck || true
 
 test: FORCE ## test
-	go test --race -v ./src/...
+	go test --race -v ./...
 
 run-test: FORCE ## run
 	air -c .air.toml
