@@ -204,6 +204,7 @@ func (f *cacheFetcherImpl) Fetch(expiration time.Duration, dst interface{}, fetc
 		if res.Err != nil {
 			return res.Err
 		}
+		reflect.ValueOf(dst).Elem().Set(reflect.ValueOf(res.Val))
 
 		if err := f.debugPrint(); err != nil {
 			return err
@@ -224,7 +225,7 @@ func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetc
 		}
 
 		if f.isCached {
-			return nil, nil
+			return reflect.ValueOf(dst).Elem().Interface(), nil
 		}
 
 		// fetch function
@@ -244,8 +245,7 @@ func (f *cacheFetcherImpl) fetch(expiration time.Duration, dst interface{}, fetc
 		}
 		f.isCached = isCached // replace get's isCached
 
-		reflect.ValueOf(dst).Elem().Set(reflect.ValueOf(fRes))
-		return nil, nil
+		return fRes, nil
 	}
 }
 
@@ -300,6 +300,7 @@ func (f *cacheFetcherImpl) Get(dst interface{}) error {
 		if res.Err != nil {
 			return res.Err
 		}
+		reflect.ValueOf(dst).Elem().Set(reflect.ValueOf(res.Val))
 
 		if err := f.debugPrint(); err != nil {
 			return err
@@ -324,7 +325,7 @@ func (f *cacheFetcherImpl) GetString() (string, error) {
 		if err := f.debugPrint(); err != nil {
 			return "", err
 		}
-		return dst, nil
+		return res.Val.(string), nil
 
 	case <-time.After(f.options.GroupTimeout):
 		return "", ErrTimeout
@@ -354,7 +355,7 @@ func (f *cacheFetcherImpl) get(dst interface{}, isStringMode bool) func() (inter
 		}
 
 		f.isCached = true
-		return nil, nil
+		return reflect.ValueOf(dst).Elem().Interface(), nil
 	}
 }
 
